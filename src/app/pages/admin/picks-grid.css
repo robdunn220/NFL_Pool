@@ -1,0 +1,130 @@
+.grid-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.grid-head h2 {
+  margin-bottom: 0.15rem;
+}
+.grid-head .field {
+  margin-bottom: 0;
+}
+.grid-head select {
+  min-width: 15rem;
+}
+
+/* The scroll container. A plain block, so overflow-x is all it needs. */
+.grid-wrap {
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+table.grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.85rem;
+}
+
+table.grid th,
+table.grid td {
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 0.4rem 0.55rem;
+  white-space: nowrap;
+  background: var(--surface);
+}
+
+/* Header row stays put while you scroll down the players. */
+table.grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-alt);
+  vertical-align: bottom;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.7rem;
+}
+
+/* Player name stays put while you scroll across the slate. */
+table.grid .player {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  font-weight: 600;
+  text-align: left;
+  min-width: 9rem;
+  box-shadow: 1px 0 0 var(--border);
+}
+table.grid thead .player {
+  z-index: 3;
+}
+
+.pts {
+  background: var(--surface-alt) !important;
+}
+.rec {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+th.game {
+  display: table-cell;
+}
+th.game .matchup {
+  display: block;
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.75rem;
+}
+th.game .line,
+th.game .final {
+  display: block;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+th.game .final {
+  font-variant-numeric: tabular-nums;
+}
+
+td.cell {
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+/* Cell states, matched to the badge palette used elsewhere. */
+.st-win {
+  background: #e9f6ed !important;
+  color: #14683c;
+}
+.st-loss {
+  background: #fdecee !important;
+  color: #8c0b20;
+}
+.st-push {
+  background: #fdf4e3 !important;
+  color: #8a6510;
+}
+.st-pending {
+  color: var(--text-muted);
+}
+.st-none {
+  color: #b7c0cc;
+}
+
+.legend {
+  margin-top: 0.6rem;
+}
+.key {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.75rem;
+}

@@ -1,0 +1,76 @@
+<div class="grid-head">
+  <div>
+    <h2>Every card, side by side</h2>
+    <p class="small muted">
+      @if (week(); as w) {
+        Week {{ w.week }} · {{ scores().length }}
+        {{ scores().length === 1 ? 'entry' : 'entries' }} ·
+        <strong>{{ isFinal() ? 'final' : 'in progress' }}</strong>
+      }
+    </p>
+  </div>
+  <div class="field">
+    <label for="gridweek">Week</label>
+    <select id="gridweek" [ngModel]="week()?.id ?? ''" (ngModelChange)="selectedId.set($event)">
+      @for (w of weeks(); track w.id) {
+        <option [value]="w.id">{{ w.id }} — Week {{ w.week }} ({{ w.status }})</option>
+      }
+    </select>
+  </div>
+</div>
+
+@if (!week()) {
+  <div class="empty">No week selected.</div>
+} @else if (!games().length) {
+  <div class="empty">This week has no games posted yet.</div>
+} @else if (loading()) {
+  <div class="empty">Loading cards…</div>
+} @else if (!scores().length) {
+  <div class="empty">Nobody has entered this week.</div>
+} @else {
+  <div class="grid-wrap">
+    <table class="grid">
+      <thead>
+        <tr>
+          <th class="player">Player</th>
+          <th class="num pts">{{ isFinal() ? 'Final' : 'Pts' }}</th>
+          <th class="num">Rec</th>
+          @for (game of games(); track game.id) {
+            <th class="game">
+              <span class="matchup">{{ game.awayAbbr }} &#64; {{ game.homeAbbr }}</span>
+              <span class="line">{{ lineLabel(game) }}</span>
+              @if (scoreLabel(game); as sc) {
+                <span class="final">{{ sc }}</span>
+              }
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of scores(); track row.uid) {
+          <tr>
+            <td class="player">{{ row.displayName }}</td>
+            <td class="num pts"><strong>{{ row.wins }}</strong></td>
+            <td class="num rec">
+              {{ row.wins }}–{{ row.losses }}@if (row.pushes) {<span>–{{ row.pushes }}</span>}
+            </td>
+            @for (game of games(); track game.id) {
+              <td class="cell" [class]="'st-' + pickStatus(row.uid, game)">
+                {{ pickLabel(row.uid, game) ?? '—' }}
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <p class="small muted legend">
+    <span class="key st-win">PIT</span> covered ·
+    <span class="key st-loss">PIT</span> didn't ·
+    <span class="key st-push">PIT</span> push ·
+    <span class="key st-pending">PIT</span> not final ·
+    <span class="key st-none">—</span> no pick.
+    @if (!isFinal()) { Totals update as games go final. }
+  </p>
+}

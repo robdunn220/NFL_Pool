@@ -144,6 +144,18 @@ The banner reads ESPN directly for snappy updates, while `syncScores` writes the
 numbers into Firestore on its own schedule — so the banner can move a minute or two ahead of the
 leaderboard, but the two can never disagree about what actually happened.
 
+## Admin
+
+Two tabs:
+
+**Setup** — bootstrap `config/app`, choose the active week, create weeks, and correct anything the
+feeds got wrong.
+
+**Picks grid** — every entry in a week as a spreadsheet: players down the side, games across the
+top, each cell the side that player took, colour-coded once the game settles. Point totals sit in a
+frozen left column and move as games go final, so the same table is both a live scoreboard and the
+record of a finished week. Any week can be selected, not just the active one.
+
 ## Admin overrides
 
 The feed gets things wrong: a postponement, a line a book moved off after capture, a score that
@@ -161,7 +173,7 @@ src/app/
   services/                auth, pool (config + active week), entries, leaderboard, ESPN live scores
   components/              lock-clock deadline strip, live scoreboard banner
   guards/auth.guard.ts     authGuard / adminGuard
-  pages/                   landing, auth, picks, leaderboard, admin
+  pages/                   landing, auth, picks, leaderboard, admin (+ picks grid)
 functions/
   src/odds.ts              The Odds API client, Eastern-time date helpers
   src/index.ts             scheduled + manual sync

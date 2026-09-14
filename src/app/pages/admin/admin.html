@@ -4,6 +4,26 @@
       <h1>Admin</h1>
       <p class="muted small">Signed in as {{ auth.displayName() }}</p>
     </div>
+    <div class="tabs" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        [class.active]="tab() === 'setup'"
+        [attr.aria-selected]="tab() === 'setup'"
+        (click)="tab.set('setup')"
+      >
+        Setup
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [class.active]="tab() === 'grid'"
+        [attr.aria-selected]="tab() === 'grid'"
+        (click)="tab.set('grid')"
+      >
+        Picks grid
+      </button>
+    </div>
     <div class="actions">
       <button class="btn btn-secondary btn-sm" type="button" (click)="syncLines()" [disabled]="busy()">
         Sync lines now
@@ -21,6 +41,13 @@
     <div class="alert alert-error">{{ msg }}</div>
   }
 
+  @if (tab() === 'grid') {
+    <section class="card">
+      <app-picks-grid [weeks]="weeks()" />
+    </section>
+  }
+
+  @if (tab() === 'setup') {
   <!-- Config -->
   <section class="card">
     <h2>Pool config</h2>
@@ -228,4 +255,5 @@
       </p>
     </section>
   }
+}
 </div>

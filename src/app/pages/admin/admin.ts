@@ -4,6 +4,7 @@ import { Game, Week, firstKickoff, weekId } from '../../models';
 import { AuthService } from '../../services/auth.service';
 import { PoolService } from '../../services/pool.service';
 import { environment } from '../../../environments/environment';
+import { PicksGridComponent } from './picks-grid';
 
 /**
  * Commissioner tools: bootstrap config, choose the active week, and correct anything the odds
@@ -14,13 +15,16 @@ import { environment } from '../../../environments/environment';
  */
 @Component({
   selector: 'app-admin',
-  imports: [FormsModule],
+  imports: [FormsModule, PicksGridComponent],
   templateUrl: './admin.html',
   styleUrl: './admin.css',
 })
 export class AdminComponent {
   protected readonly auth = inject(AuthService);
   protected readonly pool = inject(PoolService);
+
+  /** Which half of the page is showing: the setup controls, or every card side by side. */
+  protected readonly tab = signal<'setup' | 'grid'>('setup');
 
   protected readonly weeks = signal<Week[]>([]);
   /** Local copy of the active week; edits are staged here and written on Save. */
