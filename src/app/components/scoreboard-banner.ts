@@ -57,6 +57,9 @@ import { PoolService } from '../services/pool.service';
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       color: #e7eef7;
       min-height: 72px;
+      /* Never let the strip widen the page — the board scrolls inside itself. */
+      max-width: 100%;
+      overflow: hidden;
     }
     .sb-label {
       display: flex;
@@ -69,12 +72,36 @@ import { PoolService } from '../services/pool.service';
       color: #9fb1c9;
       background: rgba(0, 0, 0, 0.2);
       white-space: nowrap;
+      flex: none;
     }
     .sb-track {
       display: flex;
       align-items: stretch;
       overflow-x: auto;
+      /*
+       * min-width:0 is what makes this scroll at all. A flex item defaults to min-width:auto,
+       * which refuses to shrink below its content, so the track grew past the viewport and got
+       * clipped instead of scrolling. flex:1 then hands it the space left by the label.
+       */
+      flex: 1;
+      min-width: 0;
       scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+      overscroll-behavior-x: contain;
+    }
+    /* macOS hides overlay scrollbars until you scroll, so give the strip a standing one. */
+    .sb-track::-webkit-scrollbar {
+      height: 8px;
+    }
+    .sb-track::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .sb-track::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.28);
+      border-radius: 4px;
+    }
+    .sb-track::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.45);
     }
     .sb-game {
       display: flex;
@@ -84,6 +111,7 @@ import { PoolService } from '../services/pool.service';
       padding: 0.7rem 0.95rem;
       border-right: 1px solid rgba(255, 255, 255, 0.07);
       min-width: 150px;
+      flex: none;
     }
     .sb-game.live {
       background: rgba(200, 16, 46, 0.12);
