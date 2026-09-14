@@ -29,9 +29,9 @@ export class LeaderboardComponent {
   });
 
   constructor() {
-    // Start the live listen as soon as the week is locked (and re-run if it locks while open).
+    // Cards are public, so listen as soon as a week is active.
     effect(() => {
-      if (this.pool.isLocked()) this.board.start();
+      if (this.pool.week()) this.board.start();
     });
   }
 

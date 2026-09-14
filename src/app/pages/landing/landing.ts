@@ -33,11 +33,11 @@ import { AuthService } from '../../services/auth.service';
           </p>
         </div>
         <div class="card">
-          <h2>One entry, one deadline</h2>
+          <h2>One entry, played in the open</h2>
           <p class="muted">
-            Edit your picks as often as you like until the first Sunday kickoff. After that the
-            week locks, everyone's card becomes visible, and results score themselves as games go
-            final.
+            Edit your picks as often as you like until the first Sunday kickoff, then the week
+            locks. Everyone's card is visible the whole time — see who's on what before you commit
+            — and results score themselves as games go final.
           </p>
         </div>
         <div class="card">

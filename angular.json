@@ -1,7 +1,10 @@
 {
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
-  "cli": { "packageManager": "npm" },
+  "cli": {
+    "packageManager": "npm",
+    "analytics": "16c6d8e4-5b2b-4222-b62b-cb2b413a4cd9"
+  },
   "newProjectRoot": "projects",
   "projects": {
     "nfl-pool-app": {

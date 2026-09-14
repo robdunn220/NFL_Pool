@@ -31,13 +31,11 @@
   @if (tab() === 'week') {
     @if (!pool.week()) {
       <div class="empty">No week is open yet.</div>
-    } @else if (!pool.isLocked()) {
-      <div class="empty">
-        <h2>Cards are hidden until kickoff</h2>
-        <p>Everyone's picks appear here the moment the first Sunday game starts.</p>
-      </div>
     } @else if (!rows().length) {
-      <div class="empty">No entries were submitted for this week.</div>
+      <div class="empty">
+        <h2>No entries yet</h2>
+        <p>Be the first one in.</p>
+      </div>
     } @else {
       <div class="card table-wrap">
         <table>
@@ -73,7 +71,12 @@
         </table>
       </div>
       <p class="small muted legend">
-        Max = wins plus games still in progress. Pushes count against nobody.
+        @if (pool.isLocked()) {
+          Max = wins plus games still in progress. Pushes count against nobody.
+        } @else {
+          Picks are still open — click a name to see their card. Records fill in once games kick
+          off.
+        }
       </p>
     }
   } @else {

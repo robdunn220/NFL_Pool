@@ -21,7 +21,7 @@ export class LeaderboardService {
   private unsub: Unsubscribe | null = null;
   private watchedWeekId: string | null = null;
 
-  /** Scored and ranked rows for the active week. Empty until the week locks. */
+  /** Scored and ranked rows for the active week. Populated as soon as anyone has entered. */
   readonly weekly = computed<WeekScore[]>(() => {
     const week = this.pool.week();
     if (!week) return [];
@@ -33,16 +33,17 @@ export class LeaderboardService {
   readonly seasonLoading = signal(false);
 
   /**
-   * Begin listening to the active week's entries. Only runs once picks are locked: before lock,
-   * security rules hide other players' entries and there is nothing to score anyway.
+   * Begin listening to the active week's entries.
+   *
+   * Cards are public in this pool, so this runs from the moment a week is active rather than
+   * waiting for lock — before kickoff the board shows who is in and what they took, and it turns
+   * into a live scoreboard on its own as games go final.
    */
   start(): void {
-    if (!this.pool.isLocked()) return;
     const id = this.pool.week()?.id;
     if (!id || id === this.watchedWeekId) return;
     this.unsub?.();
     this.watchedWeekId = id;
-    this.entries.listEntries(id).catch(() => {});
     this.unsub = this.entries.watchAllEntries(id, (entries) => this.weekEntries.set(entries));
   }
 

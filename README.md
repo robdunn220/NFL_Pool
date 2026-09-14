@@ -38,8 +38,14 @@ is just an edit of the first, and only until the deadline.
 
 A week moves `draft → open → locked → final`. Picks are writable only while a week is `open` and
 `lockAt` (the first Sunday kickoff) is still in the future; the security rules enforce this
-server-side, so a stale browser tab can't sneak a pick in after kickoff. Once locked, every
-player's card becomes readable and the leaderboard scores itself live.
+server-side, so a stale browser tab can't sneak a pick in after kickoff.
+
+**The pool is played in the open**: every signed-in player can read every card at any time,
+including before kickoff. That is a deliberate choice — it makes the leaderboard useful all week
+and lets people see who is on what — with the trade-off that a late entrant can fade the room. To
+hide cards until lock instead, change the entries read rule in `firestore.rules` back to
+`request.auth.uid == uid || isLocked(wid)` and gate `LeaderboardService.start()` on
+`pool.isLocked()`.
 
 ## Setup
 

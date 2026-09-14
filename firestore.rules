@@ -1,8 +1,8 @@
 rules_version = '2';
 
 // Security model:
-//  - Anyone signed in can read the schedule/lines and the season standings.
-//  - A user may read their own entry anytime, but other users' entries only AFTER picks lock.
+//  - Anyone signed in can read the schedule/lines, every player's card, and the standings.
+//    The pool is played openly: you can see what everyone picked before kickoff.
 //  - A user may write only their own entry, and only BEFORE that week locks.
 //  - Only admins (listed in config/app.adminEmails) may write weeks, lines, or scores.
 service cloud.firestore {
@@ -54,7 +54,7 @@ service cloud.firestore {
 
       // One entry per user per week, keyed by uid — this is what enforces "one entry per week".
       match /entries/{uid} {
-        allow read: if isSignedIn() && (request.auth.uid == uid || isLocked(wid));
+        allow read: if isSignedIn();
         allow create, update: if isSignedIn()
           && request.auth.uid == uid
           && request.resource.data.uid == uid
