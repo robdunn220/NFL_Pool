@@ -25,4 +25,8 @@
   <app-lock-clock [week]="week" />
 }
 
+@if (auth.isLoggedIn()) {
+  <app-scoreboard-banner />
+}
+
 <router-outlet />

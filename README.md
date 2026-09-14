@@ -95,6 +95,26 @@ buttons.
 Spreads are taken from the first available book in a priority list (DraftKings, FanDuel, BetMGM, …)
 rather than an average — a pool wants one book's actual number, not a synthetic one.
 
+## The live scoreboard banner
+
+A strip under the nav polls **ESPN's public NFL scoreboard** (no key, CORS-open, so the browser
+calls it directly) every 30 seconds while a game is in progress and every 5 minutes otherwise.
+
+Because this is a spread pool, the banner does more than show scores: each game on the slate is
+joined to its stored line, the covering side is highlighted with its number, and a gold dot marks
+the side you took. Mid-game that reads as "who's covering if it ends right here", which is the
+thing you actually want on a Sunday afternoon.
+
+ESPN and the Odds API share no game ids, so games are matched on team names — full name, then a
+substring or nickname match to catch a game an admin typed in by hand. Matching requires *both*
+sides to agree, which keeps the Giants and the Jets apart. A game that matches nothing still shows,
+just without a line. See `mergeLiveScores` in `src/app/services/espn.service.ts` and its tests.
+
+**The banner is display-only.** Official results come from the Odds API sync in Cloud Functions,
+which is what the leaderboard scores against — so the banner may show a game as final a few minutes
+before the standings move. If you would rather spend no odds-API quota on scores at all, ESPN's
+feed carries finals too and `syncScores` could be pointed at it instead.
+
 ## Admin overrides
 
 The feed gets things wrong: a postponement, a line a book moved off after capture, a score that
@@ -109,7 +129,8 @@ src/app/
   core/firebase.ts         lazily-initialized Firebase singletons
   models/                  Week / Game / Entry / score shapes
   scoring/scoring.ts       pure ATS scoring engine (+ scoring.spec.ts)
-  services/                auth, pool (config + active week), entries, leaderboard
+  services/                auth, pool (config + active week), entries, leaderboard, ESPN live scores
+  components/              lock-clock deadline strip, live scoreboard banner
   guards/auth.guard.ts     authGuard / adminGuard
   pages/                   landing, auth, picks, leaderboard, admin
 functions/
