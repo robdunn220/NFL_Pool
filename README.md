@@ -31,10 +31,13 @@ pools hang them there. See `src/app/scoring/scoring.ts` and its tests.
 | `config/app` | `{ adminEmails, season, activeWeekId }` — the one document the security rules consult |
 | `users/{uid}` | display name and email |
 | `weeks/{season}-{NN}` | `{ season, week, status, lockAt, sundayDate, games[] }` |
-| `weeks/{id}/entries/{uid}` | `{ picks: { gameId: 'home' \| 'away' }, tiebreaker }` |
+| `weeks/{id}/entries/{uid}` | `{ picks: { gameId: 'home' \| 'away' } }` |
 
 Entries are keyed by `uid`. That is what enforces one entry per player per week — a "second entry"
 is just an edit of the first, and only until the deadline.
+
+There is no tiebreaker: a tie at the top of a week stays a tie, and the pool splits it however it
+likes.
 
 A week moves `draft → open → locked → final`. Picks are writable only while a week is `open` and
 `lockAt` (the first Sunday kickoff) is still in the future; the security rules enforce this

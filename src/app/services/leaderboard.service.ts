@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Unsubscribe } from 'firebase/firestore';
 import { Entry, SeasonRow, WeekScore } from '../models';
-import { rankWeek, scoreEntry, seasonStandings, tiebreakerTotal } from '../scoring/scoring';
+import { rankWeek, scoreEntry, seasonStandings } from '../scoring/scoring';
 import { EntryService } from './entry.service';
 import { PoolService } from './pool.service';
 
@@ -26,7 +26,7 @@ export class LeaderboardService {
     const week = this.pool.week();
     if (!week) return [];
     const scores = this.weekEntries().map((e) => scoreEntry(week, e));
-    return rankWeek(scores, tiebreakerTotal(week));
+    return rankWeek(scores);
   });
 
   readonly seasonRows = signal<SeasonRow[]>([]);

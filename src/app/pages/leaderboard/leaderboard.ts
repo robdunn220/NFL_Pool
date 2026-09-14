@@ -1,6 +1,5 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { tiebreakerTotal } from '../../scoring/scoring';
 import { AuthService } from '../../services/auth.service';
 import { LeaderboardService } from '../../services/leaderboard.service';
 import { PoolService } from '../../services/pool.service';
@@ -22,11 +21,6 @@ export class LeaderboardComponent {
   protected readonly tab = signal<Tab>('week');
 
   protected readonly rows = computed(() => this.board.weekly());
-  /** The tiebreaker target, shown as a column header once the late game is final. */
-  protected readonly actualTotal = computed(() => {
-    const week = this.pool.week();
-    return week ? tiebreakerTotal(week) : null;
-  });
 
   constructor() {
     // Cards are public, so listen as soon as a week is active.

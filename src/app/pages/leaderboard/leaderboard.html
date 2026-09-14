@@ -47,12 +47,6 @@
               <th class="num">L</th>
               <th class="num">P</th>
               <th class="num">Max</th>
-              <th class="num">
-                TB
-                @if (actualTotal() !== null) {
-                  <span class="muted">({{ actualTotal() }})</span>
-                }
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -64,7 +58,6 @@
                 <td class="num">{{ row.losses }}</td>
                 <td class="num">{{ row.pushes || '—' }}</td>
                 <td class="num muted">{{ row.maxPossible }}</td>
-                <td class="num muted">{{ row.tiebreaker ?? '—' }}</td>
               </tr>
             }
           </tbody>

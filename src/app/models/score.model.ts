@@ -23,7 +23,6 @@ export interface WeekScore {
   /** wins + pending — the ceiling if everything still open hits. */
   maxPossible: number;
   picks: PickResult[];
-  tiebreaker?: number | null;
 }
 
 /** Season-long standings row, aggregated across weeks. */

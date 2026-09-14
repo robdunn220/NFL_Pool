@@ -31,7 +31,6 @@ export class PicksComponent implements OnDestroy {
   protected readonly saved = signal<Entry | null>(null);
   /** Local, unsaved pick state. Diverges from `saved` while the user is clicking around. */
   protected readonly draft = signal<Record<string, Side>>({});
-  protected readonly tiebreaker = signal<number | null>(null);
 
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
@@ -63,8 +62,7 @@ export class PicksComponent implements OnDestroy {
     const draft = this.draft();
     const savedPicks = saved?.picks ?? {};
     const keys = new Set([...Object.keys(savedPicks), ...Object.keys(draft)]);
-    for (const k of keys) if (savedPicks[k] !== draft[k]) return true;
-    return (saved?.tiebreaker ?? null) !== this.tiebreaker();
+    return [...keys].some((k) => savedPicks[k] !== draft[k]);
   });
 
   /** Running record, meaningful only once games start going final. */
@@ -92,7 +90,6 @@ export class PicksComponent implements OnDestroy {
         // user has nothing in flight, so an echo of our own write can't clobber live edits.
         if (!this.hydrated || !this.dirty()) {
           this.draft.set({ ...(entry?.picks ?? {}) });
-          this.tiebreaker.set(entry?.tiebreaker ?? null);
         }
         this.hydrated = true;
         this.loading.set(false);
@@ -129,7 +126,6 @@ export class PicksComponent implements OnDestroy {
         uid: user.uid,
         displayName: this.auth.displayName(),
         picks: this.draft(),
-        tiebreaker: this.tiebreaker(),
       });
       this.savedAt.set(Date.now());
     } catch (e) {
@@ -146,7 +142,6 @@ export class PicksComponent implements OnDestroy {
   protected revert(): void {
     const entry = this.saved();
     this.draft.set({ ...(entry?.picks ?? {}) });
-    this.tiebreaker.set(entry?.tiebreaker ?? null);
   }
 
   // --- Template helpers ---
@@ -182,10 +177,4 @@ export class PicksComponent implements OnDestroy {
       minute: '2-digit',
     });
   }
-
-  /** The game whose total settles ties: the latest kickoff on the slate. */
-  protected readonly tiebreakerGame = computed<Game | null>(() => {
-    const games = this.games();
-    return games.length ? [...games].sort((a, b) => b.kickoff - a.kickoff)[0] : null;
-  });
 }

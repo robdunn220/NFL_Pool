@@ -106,25 +106,6 @@
       }
     </div>
 
-    @if (tiebreakerGame(); as tb) {
-      <div class="card tiebreak">
-        <label for="tb">
-          Tiebreaker — total points in {{ tb.awayAbbr }} &#64; {{ tb.homeAbbr }}
-        </label>
-        <input
-          id="tb"
-          type="number"
-          min="0"
-          max="120"
-          [ngModel]="tiebreaker()"
-          (ngModelChange)="tiebreaker.set($event === null || $event === '' ? null : +$event)"
-          [disabled]="!canEdit()"
-          placeholder="e.g. 47"
-        />
-        <p class="small muted">Closest guess breaks a tie at the top. Optional.</p>
-      </div>
-    }
-
     @if (canEdit()) {
       <div class="save-bar">
         <span class="small muted">

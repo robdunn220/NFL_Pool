@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Entry, Game, Week } from '../models';
-import { rankWeek, scoreEntry, seasonStandings, settleGame, tiebreakerTotal } from './scoring';
+import { rankWeek, scoreEntry, seasonStandings, settleGame } from './scoring';
 
 function game(partial: Partial<Game> & Pick<Game, 'id'>): Game {
   return {
@@ -18,8 +18,8 @@ function week(games: Game[]): Week {
   return { id: '2026-02', season: 2026, week: 2, status: 'final', lockAt: 0, games };
 }
 
-function entry(picks: Entry['picks'], tiebreaker?: number): Entry {
-  return { uid: 'u1', displayName: 'Rob', picks, tiebreaker };
+function entry(picks: Entry['picks']): Entry {
+  return { uid: 'u1', displayName: 'Rob', picks };
 }
 
 describe('settleGame', () => {
@@ -114,35 +114,12 @@ describe('rankWeek', () => {
     expect(rankWeek(scores).map((s) => s.uid)).toEqual(['b', 'c', 'a']);
   });
 
-  it('breaks a tie by the closest tiebreaker guess', () => {
+  it('leaves an even tie alone, ordering by name', () => {
     const scores = [
-      scoreEntry(slate, { uid: 'a', displayName: 'Ann', picks: { g1: 'away' }, tiebreaker: 60 }),
-      scoreEntry(slate, { uid: 'b', displayName: 'Bob', picks: { g1: 'away' }, tiebreaker: 48 }),
-    ];
-    expect(rankWeek(scores, 47).map((s) => s.uid)).toEqual(['b', 'a']);
-  });
-
-  it('sorts entries with no tiebreaker below those that have one', () => {
-    const scores = [
+      scoreEntry(slate, { uid: 'b', displayName: 'Bob', picks: { g1: 'away' } }),
       scoreEntry(slate, { uid: 'a', displayName: 'Ann', picks: { g1: 'away' } }),
-      scoreEntry(slate, { uid: 'b', displayName: 'Bob', picks: { g1: 'away' }, tiebreaker: 99 }),
     ];
-    expect(rankWeek(scores, 47).map((s) => s.uid)).toEqual(['b', 'a']);
-  });
-});
-
-describe('tiebreakerTotal', () => {
-  it('uses the combined score of the latest-kicking game', () => {
-    const w = week([
-      game({ id: 'early', kickoff: 1, homeScore: 10, awayScore: 7, completed: true }),
-      game({ id: 'late', kickoff: 2, homeScore: 31, awayScore: 24, completed: true }),
-    ]);
-    expect(tiebreakerTotal(w)).toBe(55);
-  });
-
-  it('is null until that game is final', () => {
-    const w = week([game({ id: 'late', kickoff: 2 })]);
-    expect(tiebreakerTotal(w)).toBeNull();
+    expect(rankWeek(scores).map((s) => s.uid)).toEqual(['a', 'b']);
   });
 });
 

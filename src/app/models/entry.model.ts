@@ -11,12 +11,10 @@ export interface Entry {
   uid: string;
   displayName: string;
   picks: Record<string, Side>;
-  /** Optional tiebreaker: total points in the last Sunday game. */
-  tiebreaker?: number | null;
   submittedAt?: number;
   updatedAt?: number;
 }
 
 export function emptyEntry(uid: string, displayName: string): Entry {
-  return { uid, displayName, picks: {}, tiebreaker: null };
+  return { uid, displayName, picks: {} };
 }

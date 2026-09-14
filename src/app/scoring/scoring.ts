@@ -57,7 +57,6 @@ export function scoreEntry(week: Week, entry: Entry): WeekScore {
     missed: count('none'),
     maxPossible: wins + pending,
     picks,
-    tiebreaker: entry.tiebreaker ?? null,
   };
 }
 
@@ -67,30 +66,15 @@ export function scoreWeek(week: Week, entries: Entry[]): WeekScore[] {
 }
 
 /**
- * Sorts a scored week: most wins, then fewest losses, then closest tiebreaker (when the week has
- * an actual total to compare against), then name. A missing tiebreaker sorts last.
+ * Sorts a scored week: most wins, then fewest losses, then name.
+ *
+ * Ties at the top stay ties — the pool splits them rather than settling on a guessed total.
  */
-export function rankWeek(scores: WeekScore[], actualTotal?: number | null): WeekScore[] {
-  const distance = (s: WeekScore) =>
-    actualTotal == null || s.tiebreaker == null
-      ? Number.POSITIVE_INFINITY
-      : Math.abs(s.tiebreaker - actualTotal);
-
+export function rankWeek(scores: WeekScore[]): WeekScore[] {
   return [...scores].sort(
     (a, b) =>
-      b.wins - a.wins ||
-      a.losses - b.losses ||
-      distance(a) - distance(b) ||
-      a.displayName.localeCompare(b.displayName),
+      b.wins - a.wins || a.losses - b.losses || a.displayName.localeCompare(b.displayName),
   );
-}
-
-/** The tiebreaker target: total points in the latest-kicking game, once it is final. */
-export function tiebreakerTotal(week: Week): number | null {
-  const games = [...week.games].sort((a, b) => b.kickoff - a.kickoff);
-  const last = games[0];
-  if (!last?.completed || last.homeScore == null || last.awayScore == null) return null;
-  return last.homeScore + last.awayScore;
 }
 
 /** Rolls scored weeks up into season standings, sorted by wins then win percentage. */
