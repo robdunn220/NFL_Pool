@@ -1,0 +1,59 @@
+section.card {
+  margin-bottom: 1.25rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.row .field {
+  margin-bottom: 0;
+}
+.row .grow {
+  flex: 1 1 14rem;
+}
+.row input,
+.row select {
+  min-width: 8rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.games-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+table.games input {
+  padding: 0.35rem 0.45rem;
+  font-size: 0.85rem;
+  min-width: 11rem;
+}
+table.games input.tight {
+  min-width: 5.5rem;
+}
+table.games input.check {
+  min-width: 0;
+  width: auto;
+}
+table.games td {
+  padding: 0.3rem 0.4rem;
+  vertical-align: middle;
+}
+
+code {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+  font-size: 0.85em;
+}

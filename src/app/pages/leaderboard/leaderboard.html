@@ -1,0 +1,117 @@
+<div class="container">
+  <div class="page-head">
+    <div>
+      <h1>Leaderboard</h1>
+      @if (pool.week(); as week) {
+        <p class="muted small">Week {{ week.week }} · {{ week.season }} season</p>
+      }
+    </div>
+    <div class="tabs" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        [class.active]="tab() === 'week'"
+        [attr.aria-selected]="tab() === 'week'"
+        (click)="tab.set('week')"
+      >
+        This week
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [class.active]="tab() === 'season'"
+        [attr.aria-selected]="tab() === 'season'"
+        (click)="showSeason()"
+      >
+        Season
+      </button>
+    </div>
+  </div>
+
+  @if (tab() === 'week') {
+    @if (!pool.week()) {
+      <div class="empty">No week is open yet.</div>
+    } @else if (!pool.isLocked()) {
+      <div class="empty">
+        <h2>Cards are hidden until kickoff</h2>
+        <p>Everyone's picks appear here the moment the first Sunday game starts.</p>
+      </div>
+    } @else if (!rows().length) {
+      <div class="empty">No entries were submitted for this week.</div>
+    } @else {
+      <div class="card table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="num">#</th>
+              <th>Player</th>
+              <th class="num">W</th>
+              <th class="num">L</th>
+              <th class="num">P</th>
+              <th class="num">Max</th>
+              <th class="num">
+                TB
+                @if (actualTotal() !== null) {
+                  <span class="muted">({{ actualTotal() }})</span>
+                }
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.uid; let i = $index) {
+              <tr [class.me]="row.uid === auth.user()?.uid">
+                <td class="num">{{ i + 1 }}</td>
+                <td><a [routerLink]="['/picks', row.uid]">{{ row.displayName }}</a></td>
+                <td class="num"><strong>{{ row.wins }}</strong></td>
+                <td class="num">{{ row.losses }}</td>
+                <td class="num">{{ row.pushes || '—' }}</td>
+                <td class="num muted">{{ row.maxPossible }}</td>
+                <td class="num muted">{{ row.tiebreaker ?? '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted legend">
+        Max = wins plus games still in progress. Pushes count against nobody.
+      </p>
+    }
+  } @else {
+    @if (board.seasonLoading()) {
+      <div class="empty">Adding up the season…</div>
+    } @else if (!board.seasonRows().length) {
+      <div class="empty">No completed weeks yet.</div>
+    } @else {
+      <div class="card table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="num">#</th>
+              <th>Player</th>
+              <th class="num">W</th>
+              <th class="num">L</th>
+              <th class="num">P</th>
+              <th class="num">Pct</th>
+              <th class="num">Weeks</th>
+              <th class="num">Best</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of board.seasonRows(); track row.uid; let i = $index) {
+              <tr [class.me]="row.uid === auth.user()?.uid">
+                <td class="num">{{ i + 1 }}</td>
+                <td>{{ row.displayName }}</td>
+                <td class="num"><strong>{{ row.wins }}</strong></td>
+                <td class="num">{{ row.losses }}</td>
+                <td class="num">{{ row.pushes || '—' }}</td>
+                <td class="num mono">{{ winPct(row.wins, row.losses) }}</td>
+                <td class="num muted">{{ row.weeksPlayed }}</td>
+                <td class="num muted">{{ row.bestWeek }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</div>

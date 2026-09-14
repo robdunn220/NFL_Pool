@@ -1,0 +1,141 @@
+<div class="container">
+  @if (pool.loading() || loading()) {
+    <div class="empty">Loading this week's slate…</div>
+  } @else if (!pool.week()) {
+    <div class="empty">
+      <h2>No week is open yet</h2>
+      <p>Check back once the commissioner posts the lines.</p>
+    </div>
+  } @else if (!games().length) {
+    <div class="empty">
+      <h2>Week {{ pool.week()!.week }} has no games posted yet</h2>
+      <p>Lines usually go up early in the week.</p>
+    </div>
+  } @else {
+    <div class="page-head">
+      <div>
+        <h1>{{ isOwn() ? 'My Picks' : saved()?.displayName + "'s Picks" }}</h1>
+        <p class="muted small">
+          Week {{ pool.week()!.week }} · {{ games().length }} Sunday games ·
+          @if (canEdit()) {
+            {{ pickedCount() }} of {{ games().length }} picked
+          } @else if (score(); as s) {
+            <strong class="mono">{{ s.wins }}–{{ s.losses }}</strong>
+            @if (s.pushes) { <span> ({{ s.pushes }} push)</span> }
+          }
+        </p>
+      </div>
+
+      @if (canEdit()) {
+        <div class="actions">
+          @if (dirty()) {
+            <button class="btn btn-secondary" type="button" (click)="revert()">Revert</button>
+          }
+          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="saving() || !dirty()">
+            {{ saving() ? 'Saving…' : dirty() ? 'Save picks' : 'Saved' }}
+          </button>
+        </div>
+      }
+    </div>
+
+    @if (error(); as msg) {
+      <div class="alert alert-error">{{ msg }}</div>
+    }
+    @if (canEdit() && !complete() && pickedCount() > 0) {
+      <div class="alert alert-info">
+        {{ games().length - pickedCount() }} game(s) still unpicked. Blank games score zero.
+      </div>
+    }
+    @if (!isOwn()) {
+      <div class="alert alert-info">Viewing another player's card. Read only.</div>
+    }
+
+    <div class="board">
+      @for (game of games(); track game.id) {
+        <div class="game" [class.settled]="cover(game) !== null">
+          <div class="game-meta">
+            <span class="kick">{{ kickoffLabel(game) }}</span>
+            @if (game.completed) {
+              <span class="badge">Final</span>
+            }
+            @switch (status(game)) {
+              @case ('win') { <span class="badge badge-win">Win</span> }
+              @case ('loss') { <span class="badge badge-loss">Loss</span> }
+              @case ('push') { <span class="badge badge-push">Push</span> }
+            }
+          </div>
+
+          <div class="sides">
+            <button
+              type="button"
+              class="side"
+              [class.picked]="selected(game, 'away')"
+              [class.covered]="cover(game) === 'away'"
+              [disabled]="!canEdit() || game.homeSpread === null"
+              (click)="pick(game, 'away')"
+            >
+              <span class="team">{{ game.awayTeam }}</span>
+              <span class="line mono">{{ spread(game, 'away') }}</span>
+              @if (game.awayScore !== undefined) {
+                <span class="score mono">{{ game.awayScore }}</span>
+              }
+            </button>
+
+            <span class="at" aria-hidden="true">@</span>
+
+            <button
+              type="button"
+              class="side"
+              [class.picked]="selected(game, 'home')"
+              [class.covered]="cover(game) === 'home'"
+              [disabled]="!canEdit() || game.homeSpread === null"
+              (click)="pick(game, 'home')"
+            >
+              <span class="team">{{ game.homeTeam }}</span>
+              <span class="line mono">{{ spread(game, 'home') }}</span>
+              @if (game.homeScore !== undefined) {
+                <span class="score mono">{{ game.homeScore }}</span>
+              }
+            </button>
+          </div>
+
+          @if (game.homeSpread === null) {
+            <p class="no-line small muted">No line posted — this game doesn't count.</p>
+          }
+        </div>
+      }
+    </div>
+
+    @if (tiebreakerGame(); as tb) {
+      <div class="card tiebreak">
+        <label for="tb">
+          Tiebreaker — total points in {{ tb.awayAbbr }} &#64; {{ tb.homeAbbr }}
+        </label>
+        <input
+          id="tb"
+          type="number"
+          min="0"
+          max="120"
+          [ngModel]="tiebreaker()"
+          (ngModelChange)="tiebreaker.set($event === null || $event === '' ? null : +$event)"
+          [disabled]="!canEdit()"
+          placeholder="e.g. 47"
+        />
+        <p class="small muted">Closest guess breaks a tie at the top. Optional.</p>
+      </div>
+    }
+
+    @if (canEdit()) {
+      <div class="save-bar">
+        <span class="small muted">
+          @if (dirty()) { Unsaved changes }
+          @else if (savedAt()) { Picks saved }
+          @else { Edit freely until the first kickoff }
+        </span>
+        <button class="btn btn-primary" type="button" (click)="save()" [disabled]="saving() || !dirty()">
+          {{ saving() ? 'Saving…' : 'Save picks' }}
+        </button>
+      </div>
+    }
+  }
+</div>

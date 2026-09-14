@@ -1,0 +1,28 @@
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-brand" routerLink="/">
+      <span class="nav-mark" aria-hidden="true">🏈</span>
+      <span>Sunday Pool</span>
+    </a>
+    <div class="nav-links">
+      @if (auth.isLoggedIn()) {
+        <a routerLink="/picks" routerLinkActive="active">My Picks</a>
+        <a routerLink="/leaderboard" routerLinkActive="active">Leaderboard</a>
+        @if (auth.isAdmin()) {
+          <a routerLink="/admin" routerLinkActive="active">Admin</a>
+        }
+        <span class="nav-user">{{ auth.displayName() }}</span>
+        <button type="button" class="btn-ghost" (click)="logout()">Sign out</button>
+      } @else {
+        <a routerLink="/login" routerLinkActive="active">Sign in</a>
+        <a routerLink="/register" routerLinkActive="active">Register</a>
+      }
+    </div>
+  </div>
+</nav>
+
+@if (auth.isLoggedIn() && pool.week(); as week) {
+  <app-lock-clock [week]="week" />
+}
+
+<router-outlet />

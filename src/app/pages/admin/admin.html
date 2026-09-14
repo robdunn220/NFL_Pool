@@ -1,0 +1,231 @@
+<div class="container">
+  <div class="page-head">
+    <div>
+      <h1>Admin</h1>
+      <p class="muted small">Signed in as {{ auth.displayName() }}</p>
+    </div>
+    <div class="actions">
+      <button class="btn btn-secondary btn-sm" type="button" (click)="syncLines()" [disabled]="busy()">
+        Sync lines now
+      </button>
+      <button class="btn btn-secondary btn-sm" type="button" (click)="syncScores()" [disabled]="busy()">
+        Sync scores now
+      </button>
+    </div>
+  </div>
+
+  @if (message(); as msg) {
+    <div class="alert alert-success">{{ msg }}</div>
+  }
+  @if (error(); as msg) {
+    <div class="alert alert-error">{{ msg }}</div>
+  }
+
+  <!-- Config -->
+  <section class="card">
+    <h2>Pool config</h2>
+    @if (pool.config(); as cfg) {
+      <p class="small muted">
+        Season {{ cfg.season }} · active week
+        <strong>{{ cfg.activeWeekId ?? 'none' }}</strong> · admins: {{ cfg.adminEmails.join(', ') }}
+      </p>
+      <div class="row">
+        <div class="field grow">
+          <label for="active">Active week</label>
+          <select id="active" [ngModel]="cfg.activeWeekId ?? ''" (ngModelChange)="setActive($event)">
+            <option value="">— none —</option>
+            @for (w of weeks(); track w.id) {
+              <option [value]="w.id">{{ w.id }} — Week {{ w.week }} ({{ w.status }})</option>
+            }
+          </select>
+        </div>
+      </div>
+    } @else {
+      <p class="small muted">
+        No <code>config/app</code> document yet. Creating it registers the admin list the security
+        rules check.
+      </p>
+      <button class="btn btn-primary" type="button" (click)="initConfig()" [disabled]="busy()">
+        Initialize config
+      </button>
+    }
+  </section>
+
+  <!-- Create a week -->
+  <section class="card">
+    <h2>Create a week</h2>
+    <div class="row">
+      <div class="field">
+        <label for="season">Season</label>
+        <input id="season" type="number" [(ngModel)]="newSeason" />
+      </div>
+      <div class="field">
+        <label for="weekno">Week</label>
+        <input id="weekno" type="number" min="1" max="18" [(ngModel)]="newWeek" />
+      </div>
+      <button class="btn btn-secondary" type="button" (click)="createWeek()" [disabled]="busy()">
+        Create
+      </button>
+    </div>
+    <p class="small muted">
+      New weeks start as <code>draft</code> and stay hidden from players. Pull lines, then flip to
+      <code>open</code>.
+    </p>
+  </section>
+
+  <!-- Edit the active week -->
+  @if (draft(); as week) {
+    <section class="card">
+      <div class="page-head">
+        <h2>{{ week.id }} — Week {{ week.week }}</h2>
+        <button class="btn btn-primary" type="button" (click)="saveWeek()" [disabled]="busy()">
+          Save week
+        </button>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="status">Status</label>
+          <select id="status" [ngModel]="week.status" (ngModelChange)="setStatus($event)">
+            @for (s of statuses; track s) {
+              <option [value]="s">{{ s }}</option>
+            }
+          </select>
+        </div>
+        <div class="field grow">
+          <label for="lockat">Picks lock at</label>
+          <input
+            id="lockat"
+            type="datetime-local"
+            [ngModel]="lockAtInput()"
+            (ngModelChange)="setLockAt($event)"
+          />
+        </div>
+        <button class="btn btn-secondary btn-sm" type="button" (click)="lockAtFirstKickoff()">
+          Use first kickoff
+        </button>
+        <div class="field">
+          <label for="sunday">Sunday (ET)</label>
+          <input
+            id="sunday"
+            type="date"
+            [ngModel]="week.sundayDate ?? ''"
+            (ngModelChange)="setSundayDate($event)"
+          />
+        </div>
+      </div>
+      <p class="small muted">
+        The odds sync pulls every game kicking off on this date. Leave it blank and the next
+        upcoming Sunday is used, and written back here.
+      </p>
+
+      <h3 class="games-head">
+        Games <span class="muted small">({{ week.games.length }})</span>
+        <button class="btn btn-secondary btn-sm" type="button" (click)="addGame()">Add game</button>
+      </h3>
+
+      @if (!week.games.length) {
+        <p class="small muted">
+          No games yet. Use “Sync lines now” to pull the Sunday slate, or add one by hand.
+        </p>
+      }
+
+      <div class="table-wrap">
+        <table class="games">
+          <thead>
+            <tr>
+              <th>Kickoff</th>
+              <th>Away</th>
+              <th>Home</th>
+              <th class="num">Home spread</th>
+              <th class="num">Away pts</th>
+              <th class="num">Home pts</th>
+              <th>Final</th>
+              <th>Pin line</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (game of week.games; track game.id) {
+              <tr>
+                <td>
+                  <input
+                    type="datetime-local"
+                    [ngModel]="kickoffInput(game)"
+                    (ngModelChange)="updateGame(game.id, { kickoff: parseLocal($event) })"
+                  />
+                </td>
+                <td>
+                  <input
+                    [ngModel]="game.awayTeam"
+                    (ngModelChange)="updateGame(game.id, { awayTeam: $event })"
+                    placeholder="Arizona Cardinals"
+                  />
+                </td>
+                <td>
+                  <input
+                    [ngModel]="game.homeTeam"
+                    (ngModelChange)="updateGame(game.id, { homeTeam: $event })"
+                    placeholder="Pittsburgh Steelers"
+                  />
+                </td>
+                <td class="num">
+                  <input
+                    class="tight"
+                    type="number"
+                    step="0.5"
+                    [ngModel]="game.homeSpread"
+                    (ngModelChange)="updateGame(game.id, { homeSpread: numberOrNull($event) })"
+                    placeholder="-3.5"
+                  />
+                </td>
+                <td class="num">
+                  <input
+                    class="tight"
+                    type="number"
+                    [ngModel]="game.awayScore"
+                    (ngModelChange)="updateGame(game.id, { awayScore: numberOrNull($event) ?? undefined })"
+                  />
+                </td>
+                <td class="num">
+                  <input
+                    class="tight"
+                    type="number"
+                    [ngModel]="game.homeScore"
+                    (ngModelChange)="updateGame(game.id, { homeScore: numberOrNull($event) ?? undefined })"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="checkbox"
+                    class="check"
+                    [ngModel]="game.completed"
+                    (ngModelChange)="updateGame(game.id, { completed: $event })"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="checkbox"
+                    class="check"
+                    [ngModel]="game.lineLocked"
+                    (ngModelChange)="toggleLineLock(game)"
+                  />
+                </td>
+                <td>
+                  <button class="btn btn-danger btn-sm" type="button" (click)="removeGame(game.id)">
+                    ✕
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <p class="small muted">
+        Home spread is the number added to the home score: <code>-3.5</code> means the home team is
+        favored by 3.5. Pin a line to stop the scheduled sync from moving it.
+      </p>
+    </section>
+  }
+</div>

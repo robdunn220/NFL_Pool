@@ -1,0 +1,66 @@
+rules_version = '2';
+
+// Security model:
+//  - Anyone signed in can read the schedule/lines and the season standings.
+//  - A user may read their own entry anytime, but other users' entries only AFTER picks lock.
+//  - A user may write only their own entry, and only BEFORE that week locks.
+//  - Only admins (listed in config/app.adminEmails) may write weeks, lines, or scores.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function adminEmails() {
+      return get(/databases/$(database)/documents/config/app).data.adminEmails;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/config/app)
+        && request.auth.token.email in adminEmails();
+    }
+
+    function week(wid) {
+      return get(/databases/$(database)/documents/weeks/$(wid)).data;
+    }
+
+    // Locked once the week's status advances, or the deadline (epoch ms) has passed.
+    // lockAt is normally the kickoff of the earliest Sunday game.
+    function isLocked(wid) {
+      let w = week(wid);
+      return w.status in ['locked', 'final']
+        || request.time.toMillis() >= w.lockAt;
+    }
+
+    // App config. First authenticated user may create it (bootstrap); only admins may change it.
+    match /config/app {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && !exists(/databases/$(database)/documents/config/app);
+      allow update, delete: if isAdmin();
+    }
+
+    // User profiles.
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /weeks/{wid} {
+      // Draft weeks are admin-only; everything else is visible to signed-in users.
+      allow read: if isAdmin() || (isSignedIn() && resource.data.status != 'draft');
+      allow write: if isAdmin();
+
+      // One entry per user per week, keyed by uid — this is what enforces "one entry per week".
+      match /entries/{uid} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isLocked(wid));
+        allow create, update: if isSignedIn()
+          && request.auth.uid == uid
+          && request.resource.data.uid == uid
+          && !isLocked(wid);
+        allow delete: if isAdmin();
+      }
+    }
+  }
+}
