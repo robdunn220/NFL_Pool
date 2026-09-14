@@ -3,7 +3,7 @@
   "description": "Scheduled odds and score sync for the Sunday NFL Pool",
   "private": true,
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "lib/index.js",
   "scripts": {

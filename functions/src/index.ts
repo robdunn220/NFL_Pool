@@ -3,6 +3,7 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import * as logger from 'firebase-functions/logger';
 import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import {
   OddsEvent,
@@ -208,9 +209,45 @@ export const syncScoresSweep = onSchedule(
 
 // --- Manual triggers, used by the Admin page's sync buttons ---
 
+/**
+ * Verifies the caller is a pool admin.
+ *
+ * These endpoints are public URLs, so without a check anyone who learns one could drain the odds
+ * quota or rewrite a week's scores. The caller sends a Firebase ID token; we verify it and require
+ * the email to be on the same `config/app.adminEmails` list the Firestore rules consult, so admin
+ * access is defined in exactly one place.
+ *
+ * Returns null when authorized, or the HTTP status and message to reject with.
+ */
+async function requireAdmin(
+  authorization: string | undefined,
+): Promise<{ status: number; error: string } | null> {
+  const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : null;
+  if (!token) return { status: 401, error: 'Sign in as an admin to run a sync.' };
+
+  let email: string | undefined;
+  try {
+    email = (await getAuth().verifyIdToken(token)).email;
+  } catch {
+    return { status: 401, error: 'Your session has expired. Sign in again.' };
+  }
+
+  const admins = (await db.doc('config/app').get()).data()?.['adminEmails'] as string[] | undefined;
+  const allowed = (admins ?? []).map((e) => e.toLowerCase());
+  if (!email || !allowed.includes(email.toLowerCase())) {
+    return { status: 403, error: 'That account is not a pool admin.' };
+  }
+  return null;
+}
+
 export const syncLinesNow = onRequest(
   { region: REGION, secrets: [ODDS_API_KEY], cors: true },
-  async (_req, res) => {
+  async (req, res) => {
+    const denied = await requireAdmin(req.headers.authorization);
+    if (denied) {
+      res.status(denied.status).json({ ok: false, error: denied.error });
+      return;
+    }
     try {
       const status = await syncLines(ODDS_API_KEY.value());
       logger.info(status);
@@ -224,7 +261,12 @@ export const syncLinesNow = onRequest(
 
 export const syncScoresNow = onRequest(
   { region: REGION, cors: true },
-  async (_req, res) => {
+  async (req, res) => {
+    const denied = await requireAdmin(req.headers.authorization);
+    if (denied) {
+      res.status(denied.status).json({ ok: false, error: denied.error });
+      return;
+    }
     try {
       const status = await syncScores();
       logger.info(status);

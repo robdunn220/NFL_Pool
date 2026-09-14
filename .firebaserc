@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "nflpool-9c7b2"
-  }
+    "default": "nflpool-9c7b2",
+    "production": "nflpool-9c7b2"
+  },
+  "targets": {},
+  "etags": {}
 }

@@ -108,7 +108,10 @@ agree — that is what keeps the Giants and the Jets apart. Verified against a r
 slate: all 13 matched. See `functions/src/espn.ts` and its tests.
 
 Both have manual HTTP twins (`syncLinesNow`, `syncScoresNow`) wired to the Admin page's sync
-buttons.
+buttons. These are public URLs, so each verifies a Firebase ID token and requires the caller's
+email to be on the same `config/app.adminEmails` list the Firestore rules consult — admin access is
+defined in exactly one place. An unauthenticated request is rejected before any odds quota is
+spent.
 
 Spreads are taken from the first available book in a priority list (DraftKings, FanDuel, BetMGM, …)
 rather than an average — a pool wants one book's actual number, not a synthetic one.

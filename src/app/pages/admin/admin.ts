@@ -185,8 +185,17 @@ export class AdminComponent {
     return this.run('Sync scores', () => this.callFunction('syncScoresNow'));
   }
 
+  /**
+   * Calls a sync endpoint with the signed-in user's ID token. The function verifies it against the
+   * same `config/app.adminEmails` list the Firestore rules use, so these public URLs can't be
+   * fired by anyone who happens to learn them.
+   */
   private async callFunction(name: string): Promise<void> {
-    const res = await fetch(`${environment.functionsBaseUrl}/${name}`);
+    const user = this.auth.user();
+    if (!user) throw new Error('You are signed out.');
+    const res = await fetch(`${environment.functionsBaseUrl}/${name}`, {
+      headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+    });
     const body = (await res.json()) as { ok?: boolean; status?: string; error?: string };
     if (!res.ok || !body.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
     this.message.set(body.status ?? 'Done.');
