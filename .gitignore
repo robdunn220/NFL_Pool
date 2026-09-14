@@ -7,3 +7,9 @@ functions/node_modules
 functions/lib
 *.log
 .DS_Store
+
+# Local secrets for the Functions emulator — never commit
+.secret.local
+functions/.secret.local
+.env
+.env.*

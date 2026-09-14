@@ -10,15 +10,15 @@ import {
   easternDate,
   easternDay,
   fetchOdds,
-  fetchScores,
   homeSpreadOf,
   nextSundayDate,
 } from './odds';
+import { fetchScoreboard, findGame, scoresOf, toEspnDate } from './espn';
 
 initializeApp();
 const db = getFirestore();
 
-/** Set with: firebase functions:secrets:set ODDS_API_KEY */
+/** Set with: firebase functions:secrets:set ODDS_API_KEY. Lines only — scores come from ESPN. */
 const ODDS_API_KEY = defineSecret('ODDS_API_KEY');
 
 const REGION = 'us-central1';
@@ -130,31 +130,33 @@ async function syncLines(apiKey: string): Promise<string> {
 }
 
 /**
- * Pulls final scores for the active week and settles the week when the slate is done.
+ * Pulls scores for the active week from ESPN and settles the week when the slate is done.
  *
+ * ESPN rather than the odds feed: it is free and unmetered, so the odds-API quota is spent
+ * entirely on lines, and the scoreboard banner reads the same source — the banner and the
+ * standings can no longer disagree about a final.
+ *
+ * The two feeds share no game ids, so fixtures are matched on team names (see `findGame`).
  * Also flips an open week to `locked` once the deadline passes, so the season standings and the
  * leaderboard's "everyone's card is visible now" behaviour key off a single stored status.
  */
-async function syncScores(apiKey: string): Promise<string> {
+async function syncScores(): Promise<string> {
   const week = await loadActiveWeek();
   if (!week) return 'No active week configured.';
   if (!week.games.length) return `Skipped ${week.id}: no games on the slate.`;
 
-  const events = await fetchScores(apiKey);
-  const byId = new Map(events.map((e) => [e.id, e]));
+  // Ask for the week's own Sunday rather than ESPN's idea of the current week, so a late sweep on
+  // Monday still reads the right slate.
+  const espnGames = await fetchScoreboard(week.sundayDate ? toEspnDate(week.sundayDate) : undefined);
 
+  let matched = 0;
   const games = week.games.map((game) => {
-    const event = byId.get(game.id);
+    const event = findGame(espnGames, game.awayTeam, game.homeTeam);
     if (!event) return game;
-    const home = event.scores?.find((s) => s.name === event.home_team)?.score;
-    const away = event.scores?.find((s) => s.name === event.away_team)?.score;
-    if (home == null || away == null) return { ...game, completed: !!event.completed };
-    return {
-      ...game,
-      homeScore: Number(home),
-      awayScore: Number(away),
-      completed: !!event.completed,
-    };
+    matched++;
+    const scores = scoresOf(event);
+    if (!scores) return { ...game, completed: event.completed };
+    return { ...game, ...scores, completed: event.completed };
   });
 
   const allDone = games.every((g) => g.completed);
@@ -164,7 +166,11 @@ async function syncScores(apiKey: string): Promise<string> {
   await db.doc(`weeks/${week.id}`).set({ games, status, updatedAt: Date.now() }, { merge: true });
 
   const done = games.filter((g) => g.completed).length;
-  return `Scored ${week.id}: ${done}/${games.length} final, status "${status}".`;
+  const unmatched = games.length - matched;
+  return (
+    `Scored ${week.id}: ${done}/${games.length} final, status "${status}"` +
+    (unmatched ? `, ${unmatched} not found on ESPN's board.` : '.')
+  );
 }
 
 // --- Schedules ---
@@ -182,16 +188,21 @@ export const syncLinesScheduled = onSchedule(
   },
 );
 
-// Sunday afternoon and evening, poll often enough that the board feels live.
+// Sunday afternoon and evening only — that is the whole slate, and polling a weekday would just
+// re-read finals. No secret needed: ESPN's scoreboard is public.
 export const syncScoresScheduled = onSchedule(
-  {
-    schedule: 'every 10 minutes from 12:00 to 23:59',
-    timeZone: 'America/New_York',
-    region: REGION,
-    secrets: [ODDS_API_KEY],
-  },
+  { schedule: '*/10 13-23 * * 0', timeZone: 'America/New_York', region: REGION },
   async () => {
-    logger.info(await syncScores(ODDS_API_KEY.value()));
+    logger.info(await syncScores());
+  },
+);
+
+// Monday morning catch-up, for a game that ran past midnight or was still marked in-progress when
+// the Sunday window closed.
+export const syncScoresSweep = onSchedule(
+  { schedule: '0 8 * * 1', timeZone: 'America/New_York', region: REGION },
+  async () => {
+    logger.info(await syncScores());
   },
 );
 
@@ -212,10 +223,10 @@ export const syncLinesNow = onRequest(
 );
 
 export const syncScoresNow = onRequest(
-  { region: REGION, secrets: [ODDS_API_KEY], cors: true },
+  { region: REGION, cors: true },
   async (_req, res) => {
     try {
-      const status = await syncScores(ODDS_API_KEY.value());
+      const status = await syncScores();
       logger.info(status);
       res.json({ ok: true, status });
     } catch (e) {

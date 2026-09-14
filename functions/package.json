@@ -2,17 +2,21 @@
   "name": "functions",
   "description": "Scheduled odds and score sync for the Sunday NFL Pool",
   "private": true,
-  "engines": { "node": "20" },
+  "engines": {
+    "node": "20"
+  },
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
-    "deploy": "firebase deploy --only functions"
+    "deploy": "firebase deploy --only functions",
+    "test": "vitest run"
   },
   "dependencies": {
     "firebase-admin": "^12.6.0",
     "firebase-functions": "^6.1.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^4.1.11"
   }
 }

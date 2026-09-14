@@ -1,6 +1,9 @@
 /**
  * The Odds API (v4) client and the mapping from its payload to our Game shape.
  *
+ * Lines only. Scores come from ESPN (see espn.ts), which is free and unmetered, so the whole
+ * odds-API quota goes to the thing only a book can tell us: the number.
+ *
  * Kept separate from index.ts so the date/line logic can be reasoned about — and corrected —
  * without touching the scheduling glue.
  */
@@ -21,28 +24,11 @@ export interface OddsEvent {
   }[];
 }
 
-export interface ScoreEvent {
-  id: string;
-  commence_time: string;
-  completed: boolean;
-  home_team: string;
-  away_team: string;
-  scores?: { name: string; score: string }[] | null;
-}
-
 export async function fetchOdds(apiKey: string): Promise<OddsEvent[]> {
   const url = `${API}/odds?apiKey=${apiKey}&regions=us&markets=spreads&oddsFormat=american`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Odds API ${res.status}: ${await res.text()}`);
   return (await res.json()) as OddsEvent[];
-}
-
-/** Scores for games that started within the last `daysFrom` days (the API's max is 3). */
-export async function fetchScores(apiKey: string, daysFrom = 3): Promise<ScoreEvent[]> {
-  const url = `${API}/scores?apiKey=${apiKey}&daysFrom=${daysFrom}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Odds API ${res.status}: ${await res.text()}`);
-  return (await res.json()) as ScoreEvent[];
 }
 
 /**
