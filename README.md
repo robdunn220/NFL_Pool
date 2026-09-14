@@ -50,8 +50,9 @@ player's card becomes readable and the leaderboard scores itself live.
    Project settings → General → Your apps, plus your `adminEmails` and the Cloud Functions base
    URL (`https://us-central1-<project-id>.cloudfunctions.net`).
 
-3. **Get an odds API key** from [the-odds-api.com](https://the-odds-api.com) (the free tier covers
-   a weekly pool comfortably) and store it as a secret:
+3. **Get an odds API key** from [the-odds-api.com](https://the-odds-api.com) — used for **lines
+   only** (scores come from ESPN), which is about 90 requests a month, well inside the free tier.
+   Store it as a secret; it must never go in `environment.ts`, which ships to every browser:
 
    ```sh
    firebase functions:secrets:set ODDS_API_KEY
@@ -73,8 +74,16 @@ player's card becomes readable and the leaderboard scores itself live.
 
 ```sh
 npm start                  # http://localhost:4200
-npm test                   # scoring unit tests
+npm test                   # scoring + live-score matching tests
 npm run build
+
+npm --prefix functions test   # odds/ESPN helpers, team matching
+```
+
+For the Functions emulator, put the key in `functions/.secret.local` (gitignored):
+
+```
+ODDS_API_KEY=your-key
 ```
 
 ## How the automation works
@@ -86,8 +95,17 @@ Two scheduled Cloud Functions (`functions/src/index.ts`) do the weekly chores:
   passed, so the number you were graded against can never move after you picked. Individual games
   can be pinned in Admin (`lineLocked`) to hold a specific number, and hand-added games survive
   the sync.
-- **`syncScoresScheduled`** (every 10 minutes, noon–midnight ET) pulls final scores, flips an open
-  week to `locked` once the deadline passes, and marks the week `final` when every game is done.
+- **`syncScoresScheduled`** (every 10 minutes, 1–11pm ET **on Sundays**) pulls scores from ESPN,
+  flips an open week to `locked` once the deadline passes, and marks the week `final` when every
+  game is done. `syncScoresSweep` repeats it Monday at 8am to catch a game that ran past midnight.
+
+Scores come from **ESPN**, not the odds feed: it is free and unmetered, so the whole odds-API quota
+goes to the thing only a book can tell us — the number. It is also the same feed the scoreboard
+banner polls, so the banner and the standings cannot disagree about a final.
+
+The two feeds share no game ids, so fixtures are matched on team names, requiring *both* sides to
+agree — that is what keeps the Giants and the Jets apart. Verified against a real 13-game Sunday
+slate: all 13 matched. See `functions/src/espn.ts` and its tests.
 
 Both have manual HTTP twins (`syncLinesNow`, `syncScoresNow`) wired to the Admin page's sync
 buttons.
@@ -110,10 +128,9 @@ substring or nickname match to catch a game an admin typed in by hand. Matching 
 sides to agree, which keeps the Giants and the Jets apart. A game that matches nothing still shows,
 just without a line. See `mergeLiveScores` in `src/app/services/espn.service.ts` and its tests.
 
-**The banner is display-only.** Official results come from the Odds API sync in Cloud Functions,
-which is what the leaderboard scores against — so the banner may show a game as final a few minutes
-before the standings move. If you would rather spend no odds-API quota on scores at all, ESPN's
-feed carries finals too and `syncScores` could be pointed at it instead.
+The banner reads ESPN directly for snappy updates, while `syncScores` writes the same feed's
+numbers into Firestore on its own schedule — so the banner can move a minute or two ahead of the
+leaderboard, but the two can never disagree about what actually happened.
 
 ## Admin overrides
 
