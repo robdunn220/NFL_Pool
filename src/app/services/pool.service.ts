@@ -3,7 +3,6 @@ import {
   Unsubscribe,
   collection,
   doc,
-  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
@@ -74,11 +73,6 @@ export class PoolService {
       },
       () => this.loading.set(false),
     );
-  }
-
-  async getWeek(id: string): Promise<Week | null> {
-    const snap = await getDoc(doc(this.db, 'weeks', id));
-    return snap.exists() ? (snap.data() as Week) : null;
   }
 
   /** Every week the caller is allowed to read, oldest first. */

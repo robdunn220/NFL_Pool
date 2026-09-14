@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Game, Week, firstKickoff, weekId } from '../../models';
 import { AuthService } from '../../services/auth.service';
@@ -37,18 +37,41 @@ export class AdminComponent {
   /** lockAt as a datetime-local string for the input, derived from the staged week. */
   protected readonly lockAtInput = computed(() => toLocalInput(this.draft()?.lockAt ?? 0));
 
+  /** Which week id the editor is currently staged from, so a manual selection isn't clobbered. */
+  private stagedWeekId = '';
+
   constructor() {
-    this.refresh();
+    // Load the week list once config/app has resolved, NOT in the constructor.
+    //
+    // listWeeks() is a collection query, and Firestore rejects one until the signed-in user's
+    // token has reached its backend. Fired from the constructor it raced that handshake and lost
+    // often enough that the week picker came up empty on some reloads. config/app arriving proves
+    // the credentials are through, because reading it needed the same ones.
+    effect(() => {
+      if (this.pool.config()) void this.loadWeeks();
+    });
+
+    // Stage the active week for editing whenever it changes. Keyed on the id so a week the admin
+    // has just created and staged by hand doesn't get overwritten.
+    effect(() => {
+      const active = this.pool.week();
+      if (!active) {
+        this.stagedWeekId = '';
+        return;
+      }
+      if (active.id === this.stagedWeekId) return;
+      this.stagedWeekId = active.id;
+      this.draft.set(structuredClone(active));
+    });
   }
 
-  protected async refresh(): Promise<void> {
+  protected async loadWeeks(): Promise<void> {
     try {
       this.weeks.set(await this.pool.listWeeks());
-    } catch {
-      this.weeks.set([]);
+    } catch (e) {
+      // Surfaced rather than swallowed: an empty picker used to look like "no weeks exist".
+      this.error.set(`Could not load the week list: ${(e as Error).message}`);
     }
-    const active = this.pool.week();
-    if (active) this.draft.set(structuredClone(active));
   }
 
   private async run(label: string, fn: () => Promise<unknown>): Promise<void> {
@@ -74,12 +97,9 @@ export class AdminComponent {
   }
 
   protected setActive(id: string): Promise<void> {
-    return this.run('Set active week', async () => {
-      await this.pool.setActiveWeek(id || null);
-      this.pool.watchWeek(id);
-      const week = await this.pool.getWeek(id);
-      if (week) this.draft.set(structuredClone(week));
-    });
+    // PoolService listens to config/app, so writing it repoints the active week on its own; the
+    // constructor's effect then stages that week in the editor.
+    return this.run('Set active week', () => this.pool.setActiveWeek(id || null));
   }
 
   // --- Weeks ---
@@ -96,7 +116,7 @@ export class AdminComponent {
         games: [],
       };
       await this.pool.saveWeek(week);
-      await this.refresh();
+      await this.loadWeeks();
       this.draft.set(week);
     });
   }
@@ -106,7 +126,7 @@ export class AdminComponent {
     if (!week) return Promise.resolve();
     return this.run('Save week', async () => {
       await this.pool.saveWeek(week);
-      await this.refresh();
+      await this.loadWeeks();
     });
   }
 
@@ -199,7 +219,7 @@ export class AdminComponent {
     const body = (await res.json()) as { ok?: boolean; status?: string; error?: string };
     if (!res.ok || !body.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
     this.message.set(body.status ?? 'Done.');
-    await this.refresh();
+    await this.loadWeeks();
   }
 }
 
