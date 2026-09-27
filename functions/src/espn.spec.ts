@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EspnGame, findGame, sameTeam, scoresOf, toEspnDate } from './espn';
+import { abbreviate } from './odds';
 
 function game(away: string, home: string, awayScore = 0, homeScore = 0, completed = true): EspnGame {
   return {
@@ -86,5 +87,22 @@ describe('scoresOf', () => {
 describe('toEspnDate', () => {
   it('strips the dashes from our stored Sunday', () => {
     expect(toEspnDate('2026-09-13')).toBe('20260913');
+  });
+});
+
+describe('abbreviate', () => {
+  it('tells the four "New" teams and the two LA teams apart', () => {
+    expect(abbreviate('New England Patriots')).toBe('NE');
+    expect(abbreviate('New York Giants')).toBe('NYG');
+    expect(abbreviate('New York Jets')).toBe('NYJ');
+    expect(abbreviate('New Orleans Saints')).toBe('NO');
+    expect(abbreviate('Los Angeles Rams')).toBe('LAR');
+    expect(abbreviate('Los Angeles Chargers')).toBe('LAC');
+  });
+
+  it('matches the app-side table exactly, so stored and displayed values agree', () => {
+    expect(abbreviate('San Francisco 49ers')).toBe('SF');
+    expect(abbreviate('Washington Commanders')).toBe('WSH');
+    expect(abbreviate('Kansas City Chiefs')).toBe('KC');
   });
 });

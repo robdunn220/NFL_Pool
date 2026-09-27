@@ -1,7 +1,8 @@
 import { Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Unsubscribe } from 'firebase/firestore';
-import { Entry, Game, PickStatus, Week, spreadLabel } from '../../models';
+import { teamAbbr } from '../../core/nfl-teams';
+import { Entry, Game, PickStatus, Side, Week, spreadLabel } from '../../models';
 import { rankWeek, scoreEntry, settleGame } from '../../scoring/scoring';
 import { EntryService } from '../../services/entry.service';
 import { PoolService } from '../../services/pool.service';
@@ -86,12 +87,21 @@ export class PicksGridComponent implements OnDestroy {
 
   // --- Template helpers ---
 
+  /**
+   * Abbreviation for one side of a game, derived from the full team name rather than the `Abbr`
+   * fields stored on the game — those were written by an older heuristic that collapsed all four
+   * "New ..." teams onto NEW.
+   */
+  protected abbr(game: Game, side: Side): string {
+    return teamAbbr(side === 'home' ? game.homeTeam : game.awayTeam);
+  }
+
   /** The abbreviation of the side this player took, or null when they left it blank. */
   protected pickLabel(uid: string, game: Game): string | null {
     const entry = this.rows().find((e) => e.uid === uid);
     const side = entry?.picks[game.id];
     if (!side) return null;
-    return side === 'home' ? game.homeAbbr : game.awayAbbr;
+    return this.abbr(game, side);
   }
 
   /** Status of that player's pick, used to colour the cell. */
@@ -109,7 +119,7 @@ export class PicksGridComponent implements OnDestroy {
   protected lineLabel(game: Game): string {
     if (game.homeSpread === null) return 'no line';
     const favouredHome = game.homeSpread < 0;
-    const abbr = favouredHome ? game.homeAbbr : game.awayAbbr;
+    const abbr = this.abbr(game, favouredHome ? 'home' : 'away');
     return `${abbr} ${spreadLabel(game.homeSpread, favouredHome ? 'home' : 'away')}`;
   }
 

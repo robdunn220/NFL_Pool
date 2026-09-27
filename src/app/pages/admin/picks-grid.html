@@ -1,6 +1,5 @@
 <div class="grid-head">
   <div>
-    <h2>Every card, side by side</h2>
     <p class="small muted">
       @if (week(); as w) {
         Week {{ w.week }} · {{ scores().length }}
@@ -39,7 +38,7 @@
           <th class="num">Rec</th>
           @for (game of games(); track game.id) {
             <th class="game">
-              <span class="matchup">{{ game.awayAbbr }} &#64; {{ game.homeAbbr }}</span>
+              <span class="matchup">{{ abbr(game, 'away') }} &#64; {{ abbr(game, 'home') }}</span>
               <span class="line">{{ lineLabel(game) }}</span>
               @if (scoreLabel(game); as sc) {
                 <span class="final">{{ sc }}</span>
@@ -68,10 +67,10 @@
   </div>
 
   <p class="small muted legend">
-    <span class="key st-win">PIT</span> covered ·
-    <span class="key st-loss">PIT</span> didn't ·
-    <span class="key st-push">PIT</span> push ·
-    <span class="key st-pending">PIT</span> not final ·
+    <span class="key st-win">TEAM</span> covered ·
+    <span class="key st-loss">TEAM</span> didn't ·
+    <span class="key st-push">TEAM</span> push ·
+    <span class="key st-pending">TEAM</span> not final ·
     <span class="key st-none">—</span> no pick.
     @if (!isFinal()) { Totals update as games go final. }
   </p>

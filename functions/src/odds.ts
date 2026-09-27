@@ -78,9 +78,30 @@ export function nextSundayDate(from = Date.now()): string {
   return easternDate(from);
 }
 
-/** Three-letter-ish abbreviation from a full team name ("Pittsburgh Steelers" -> "PIT"). */
+/**
+ * Canonical NFL abbreviations, keyed on nickname.
+ *
+ * Slicing the city apart doesn't work: the Patriots, both New York clubs and the Saints all begin
+ * "New", and both Los Angeles clubs begin "Los". All 32 nicknames are unique, so they make a
+ * reliable key.
+ *
+ * NOTE: duplicated in src/app/core/nfl-teams.ts (separate packages, can't share a module). Both
+ * copies have tests; keep them in sync.
+ */
+const ABBR_BY_NICKNAME: Record<string, string> = {
+  cardinals: 'ARI', falcons: 'ATL', ravens: 'BAL', bills: 'BUF',
+  panthers: 'CAR', bears: 'CHI', bengals: 'CIN', browns: 'CLE',
+  cowboys: 'DAL', broncos: 'DEN', lions: 'DET', packers: 'GB',
+  texans: 'HOU', colts: 'IND', jaguars: 'JAX', chiefs: 'KC',
+  raiders: 'LV', chargers: 'LAC', rams: 'LAR', dolphins: 'MIA',
+  vikings: 'MIN', patriots: 'NE', saints: 'NO', giants: 'NYG',
+  jets: 'NYJ', eagles: 'PHI', steelers: 'PIT', '49ers': 'SF',
+  seahawks: 'SEA', buccaneers: 'TB', titans: 'TEN', commanders: 'WSH',
+};
+
+/** Abbreviation for a team from any reasonable spelling ("Pittsburgh Steelers" -> "PIT"). */
 export function abbreviate(team: string): string {
-  const nickname = team.split(' ').slice(-1)[0];
-  const city = team.split(' ').slice(0, -1).join(' ');
-  return (city || nickname).replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
+  if (!team) return '';
+  const nickname = team.trim().split(/\s+/).slice(-1)[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+  return ABBR_BY_NICKNAME[nickname] ?? team.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase();
 }
