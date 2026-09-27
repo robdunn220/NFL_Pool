@@ -148,13 +148,19 @@ async function syncScores(): Promise<string> {
 
   // Ask for the week's own Sunday rather than ESPN's idea of the current week, so a late sweep on
   // Monday still reads the right slate.
-  const espnGames = await fetchScoreboard(week.sundayDate ? toEspnDate(week.sundayDate) : undefined);
+  const date = week.sundayDate ? toEspnDate(week.sundayDate) : undefined;
+  const espnGames = await fetchScoreboard(date);
 
-  let matched = 0;
+  // Names that failed to match are the failure mode worth reporting: the two feeds share no ids,
+  // so a fixture ESPN spells differently silently keeps whatever score it already had. Saying
+  // which ones turns a vague "scores aren't updating" into a one-line answer.
+  const unmatched: string[] = [];
   const games = week.games.map((game) => {
     const event = findGame(espnGames, game.awayTeam, game.homeTeam);
-    if (!event) return game;
-    matched++;
+    if (!event) {
+      unmatched.push(`${game.awayTeam} @ ${game.homeTeam}`);
+      return game;
+    }
     const scores = scoresOf(event);
     if (!scores) return { ...game, completed: event.completed };
     return { ...game, ...scores, completed: event.completed };
@@ -167,10 +173,11 @@ async function syncScores(): Promise<string> {
   await db.doc(`weeks/${week.id}`).set({ games, status, updatedAt: Date.now() }, { merge: true });
 
   const done = games.filter((g) => g.completed).length;
-  const unmatched = games.length - matched;
   return (
-    `Scored ${week.id}: ${done}/${games.length} final, status "${status}"` +
-    (unmatched ? `, ${unmatched} not found on ESPN's board.` : '.')
+    `Scored ${week.id} from ESPN ${date ?? '(current board)'}: ` +
+    `${espnGames.length} games on the board, ` +
+    `${games.length - unmatched.length}/${games.length} matched, ${done} final, status "${status}".` +
+    (unmatched.length ? ` NOT MATCHED: ${unmatched.join('; ')}` : '')
   );
 }
 
