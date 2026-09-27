@@ -7,6 +7,17 @@
       }
     </div>
     <div class="tabs" role="tablist">
+        @if (showGrid()) {
+            <button
+            type="button"
+            role="tab"
+            [class.active]="tab() === 'grid'"
+            [attr.aria-selected]="tab() === 'grid'"
+            (click)="tab.set('grid')"
+            >
+            Weekly Pick Grid
+            </button>
+        }
       <button
         type="button"
         role="tab"
@@ -25,17 +36,6 @@
       >
         Season
       </button>
-      @if (showGrid()) {
-        <button
-          type="button"
-          role="tab"
-          [class.active]="tab() === 'grid'"
-          [attr.aria-selected]="tab() === 'grid'"
-          (click)="tab.set('grid')"
-        >
-          All picks
-        </button>
-      }
     </div>
   </div>
 
