@@ -50,7 +50,7 @@
       <tbody>
         @for (row of scores(); track row.uid) {
           <tr>
-            <td class="player">{{ row.displayName }}</td>
+            <td class="player" [title]="row.displayName">{{ row.displayName }}</td>
             <td class="num pts"><strong>{{ row.wins }}</strong></td>
             <td class="num rec">
               {{ row.wins }}–{{ row.losses }}@if (row.pushes) {<span>–{{ row.pushes }}</span>}

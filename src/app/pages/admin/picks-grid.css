@@ -58,7 +58,18 @@ table.grid .player {
   z-index: 1;
   font-weight: 600;
   text-align: left;
-  min-width: 9rem;
+  /*
+   * Size to the longest name instead of reserving a fixed block. `width: 1%` is the table trick
+   * for "give this column only what its content needs" — the layout hands the slack to the game
+   * columns instead. On a phone every rem spent here is a game you can't see.
+   *
+   * The cap stops one very long name from setting the width for everyone; it ellipsises, and the
+   * cell carries a title attribute so the full name is still reachable.
+   */
+  width: 1%;
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
   box-shadow: 1px 0 0 var(--border);
 }
 table.grid thead .player {
@@ -127,4 +138,18 @@ td.cell {
   border-radius: 4px;
   font-weight: 600;
   font-size: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  table.grid th,
+  table.grid td {
+    padding: 0.35rem 0.4rem;
+  }
+  table.grid .player {
+    max-width: 7.5rem;
+  }
+  .grid-head select {
+    min-width: 0;
+    width: 100%;
+  }
 }
