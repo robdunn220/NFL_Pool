@@ -34,8 +34,8 @@ export class PoolService {
   /** True until both the config and its active week have been read once. */
   readonly loading = signal(true);
 
-  /** Picks are closed once the week advances or the deadline passes. Recomputed on a ticking clock. */
-  private readonly now = signal(Date.now());
+  /** A ticking clock, so anything time-boxed (the lock, the picks grid window) recomputes itself. */
+  readonly now = signal(Date.now());
   readonly isLocked = computed(() => {
     const w = this.week();
     if (!w) return true;

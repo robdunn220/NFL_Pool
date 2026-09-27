@@ -64,11 +64,28 @@
   cursor: default;
 }
 
-/* The viewer's selection. */
+/*
+ * The viewer's selection is blue: it says "this is mine", not "this is right". Green and red are
+ * reserved for the outcome, so a card mid-Sunday reads at a glance as settled vs still in play.
+ */
 .side.picked {
-  border-color: var(--field);
-  background: #eaf6ef;
+  border-color: var(--blue);
+  background: var(--blue-soft);
   font-weight: 600;
+}
+
+/* Once the game is final, the pick takes on its result. */
+.side.picked.res-win {
+  border-color: var(--field);
+  background: #e9f6ed;
+}
+.side.picked.res-loss {
+  border-color: var(--red);
+  background: #fdecee;
+}
+.side.picked.res-push {
+  border-color: var(--gold);
+  background: #fdf4e3;
 }
 
 /* Which side actually covered, once the game is final. */

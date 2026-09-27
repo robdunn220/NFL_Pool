@@ -71,6 +71,9 @@
               class="side"
               [class.picked]="selected(game, 'away')"
               [class.covered]="cover(game) === 'away'"
+              [class.res-win]="result(game, 'away') === 'win'"
+              [class.res-loss]="result(game, 'away') === 'loss'"
+              [class.res-push]="result(game, 'away') === 'push'"
               [disabled]="!canEdit() || game.homeSpread === null"
               (click)="pick(game, 'away')"
             >
@@ -88,6 +91,9 @@
               class="side"
               [class.picked]="selected(game, 'home')"
               [class.covered]="cover(game) === 'home'"
+              [class.res-win]="result(game, 'home') === 'win'"
+              [class.res-loss]="result(game, 'home') === 'loss'"
+              [class.res-push]="result(game, 'home') === 'push'"
               [disabled]="!canEdit() || game.homeSpread === null"
               (click)="pick(game, 'home')"
             >

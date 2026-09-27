@@ -9,6 +9,7 @@
       }
     </p>
   </div>
+  @if (weeks().length > 1) {
   <div class="field">
     <label for="gridweek">Week</label>
     <select id="gridweek" [ngModel]="week()?.id ?? ''" (ngModelChange)="selectedId.set($event)">
@@ -17,6 +18,7 @@
       }
     </select>
   </div>
+  }
 </div>
 
 @if (!week()) {

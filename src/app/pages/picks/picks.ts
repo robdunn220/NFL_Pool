@@ -160,6 +160,15 @@ export class PicksComponent implements OnDestroy {
     return settleGame(game);
   }
 
+  /**
+   * How this side settled, but only for the side the player actually took — the losing side of a
+   * game they picked correctly should stay neutral rather than being painted red.
+   */
+  protected result(game: Game, side: Side): PickStatus | null {
+    if (this.saved()?.picks[game.id] !== side) return null;
+    return this.status(game);
+  }
+
   /** Status of the *saved* pick on this game — what actually counts. */
   protected status(game: Game): PickStatus {
     const side = this.saved()?.picks[game.id];

@@ -25,6 +25,17 @@
       >
         Season
       </button>
+      @if (showGrid()) {
+        <button
+          type="button"
+          role="tab"
+          [class.active]="tab() === 'grid'"
+          [attr.aria-selected]="tab() === 'grid'"
+          (click)="tab.set('grid')"
+        >
+          All picks
+        </button>
+      }
     </div>
   </div>
 
@@ -72,6 +83,10 @@
         }
       </p>
     }
+  } @else if (tab() === 'grid') {
+    <div class="card">
+      <app-picks-grid />
+    </div>
   } @else {
     @if (board.seasonLoading()) {
       <div class="empty">Adding up the season…</div>

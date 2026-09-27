@@ -21,8 +21,11 @@ import { PoolService } from '../../services/pool.service';
   styleUrl: './picks-grid.css',
 })
 export class PicksGridComponent implements OnDestroy {
-  /** Every week the admin can choose between; supplied by the Admin page, already loaded. */
-  readonly weeks = input.required<Week[]>();
+  /**
+   * Weeks the viewer may switch between. The Admin page passes its loaded list; the leaderboard
+   * passes nothing, and the grid simply shows the active week with no picker.
+   */
+  readonly weeks = input<Week[]>([]);
 
   private readonly pool = inject(PoolService);
   private readonly entries = inject(EntryService);
