@@ -50,7 +50,13 @@ describe('settleGame', () => {
       [24, 20],
       [20, 20],
     ]) {
-      const g = game({ id: 'g1', homeSpread: -3.5, homeScore: hs, awayScore: as_, completed: true });
+      const g = game({
+        id: 'g1',
+        homeSpread: -3.5,
+        homeScore: hs,
+        awayScore: as_,
+        completed: true,
+      });
       expect(settleGame(g)).not.toBe('push');
     }
   });
@@ -129,7 +135,9 @@ describe('seasonStandings', () => {
       game({ id: 'g1', homeSpread: -3.5, homeScore: 21, awayScore: 20, completed: true }),
       game({ id: 'g2', homeSpread: -3.5, homeScore: 27, awayScore: 20, completed: true }),
     ]);
-    const w2 = week([game({ id: 'h1', homeSpread: -3, homeScore: 23, awayScore: 20, completed: true })]);
+    const w2 = week([
+      game({ id: 'h1', homeSpread: -3, homeScore: 23, awayScore: 20, completed: true }),
+    ]);
 
     const standings = seasonStandings([
       [
@@ -139,7 +147,43 @@ describe('seasonStandings', () => {
       [scoreEntry(w2, { uid: 'b', displayName: 'Bob', picks: { h1: 'home' } })],
     ]);
 
-    expect(standings[0]).toMatchObject({ uid: 'a', wins: 2, losses: 0, weeksPlayed: 1, bestWeek: 2 });
+    expect(standings[0]).toMatchObject({
+      uid: 'a',
+      wins: 2,
+      losses: 0,
+      weeksPlayed: 1,
+      bestWeek: 2,
+    });
     expect(standings[1]).toMatchObject({ uid: 'b', wins: 1, losses: 1, pushes: 1, weeksPlayed: 2 });
+  });
+
+  it('credits a week to the top scorer, and to everyone tied at the top', () => {
+    const w = week([
+      game({ id: 'g1', homeSpread: -3.5, homeScore: 27, awayScore: 20, completed: true }),
+      game({ id: 'g2', homeSpread: -3.5, homeScore: 27, awayScore: 20, completed: true }),
+    ]);
+    const standings = seasonStandings([
+      [
+        scoreEntry(w, { uid: 'a', displayName: 'Ann', picks: { g1: 'home', g2: 'home' } }),
+        scoreEntry(w, { uid: 'b', displayName: 'Bob', picks: { g1: 'home', g2: 'home' } }),
+        scoreEntry(w, { uid: 'c', displayName: 'Cat', picks: { g1: 'home', g2: 'away' } }),
+      ],
+    ]);
+    const won = Object.fromEntries(standings.map((r) => [r.uid, r.weeksWon]));
+    expect(won).toEqual({ a: 1, b: 1, c: 0 });
+  });
+
+  it('awards nothing while a picked game is still in play', () => {
+    const w = week([
+      game({ id: 'g1', homeSpread: -3.5, homeScore: 27, awayScore: 20, completed: true }),
+      game({ id: 'g2', homeSpread: -3.5 }),
+    ]);
+    const standings = seasonStandings([
+      [
+        scoreEntry(w, { uid: 'a', displayName: 'Ann', picks: { g1: 'home', g2: 'home' } }),
+        scoreEntry(w, { uid: 'b', displayName: 'Bob', picks: { g1: 'away', g2: 'home' } }),
+      ],
+    ]);
+    expect(standings.every((r) => r.weeksWon === 0)).toBe(true);
   });
 });

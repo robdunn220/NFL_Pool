@@ -3,12 +3,14 @@ import {
   Unsubscribe,
   collection,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
+  where,
 } from 'firebase/firestore';
 import { getDb } from '../core/firebase';
 import { Week, firstKickoff } from '../models';
@@ -75,10 +77,37 @@ export class PoolService {
     );
   }
 
+  /** One-shot read of a single week, or null if it doesn't exist or can't be read. */
+  async getWeek(id: string): Promise<Week | null> {
+    const snap = await getDoc(doc(this.db, 'weeks', id));
+    return snap.exists() ? (snap.data() as Week) : null;
+  }
+
   /** Every week the caller is allowed to read, oldest first. */
   async listWeeks(): Promise<Week[]> {
     const snap = await getDocs(query(collection(this.db, 'weeks'), orderBy('week')));
     return snap.docs.map((d) => d.data() as Week);
+  }
+
+  /**
+   * Every locked or final week, oldest first — the weeks that count toward the season.
+   *
+   * Two equality queries rather than one read of the whole collection: security rules are not
+   * filters, so a single query that could match a draft week is rejected outright for non-admins,
+   * and the season table would come back empty the moment next week was drafted. An equality
+   * filter lets the rules prove every result is non-draft. Sorted here so no composite index is
+   * needed.
+   */
+  async listSettledWeeks(): Promise<Week[]> {
+    const weeks = collection(this.db, 'weeks');
+    const snaps = await Promise.all(
+      (['locked', 'final'] as const).map((status) =>
+        getDocs(query(weeks, where('status', '==', status))),
+      ),
+    );
+    return snaps
+      .flatMap((snap) => snap.docs.map((d) => d.data() as Week))
+      .sort((a, b) => a.season - b.season || a.week - b.week);
   }
 
   // --- Admin writes (rejected by security rules for everyone else) ---

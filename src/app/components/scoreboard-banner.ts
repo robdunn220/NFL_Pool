@@ -1,6 +1,15 @@
-import { Component, DestroyRef, OnDestroy, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  OnDestroy,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { Unsubscribe } from 'firebase/firestore';
-import { Side, spreadLabel } from '../models';
+import { Side, firstKickoff, spreadLabel } from '../models';
 import { EspnService, LiveRow, mergeLiveScores } from '../services/espn.service';
 import { AuthService } from '../services/auth.service';
 import { EntryService } from '../services/entry.service';
@@ -9,6 +18,10 @@ import { PoolService } from '../services/pool.service';
 /**
  * Live scoreboard strip under the nav. Polls ESPN's NFL scoreboard and, for games on the pool's
  * slate, shows which side is covering the number and marks the one the viewer took.
+ *
+ * Follows the pool's active week, not ESPN's: it asks ESPN for the active week's Sunday, so the
+ * strip turns over when the commissioner moves the pool on rather than whenever ESPN does. With no
+ * active week it falls back to ESPN's current board.
  *
  * Renders nothing when there are no games, so it stays out of the way in the off-week.
  */
@@ -27,6 +40,9 @@ import { PoolService } from '../services/pool.service';
                     class="sb-team"
                     [class.covering]="row.covering === side"
                     [class.picked]="row.myPick === side"
+                    [class.res-win]="row.myPick === side && pickResult(row) === 'win'"
+                    [class.res-loss]="row.myPick === side && pickResult(row) === 'loss'"
+                    [class.res-push]="row.myPick === side && pickResult(row) === 'push'"
                   >
                     @if (team(row, side).logoUrl) {
                       <img class="sb-logo" [src]="team(row, side).logoUrl" alt="" />
@@ -41,7 +57,9 @@ import { PoolService } from '../services/pool.service';
               </div>
               <span class="sb-status" [class.live]="row.state === 'in'">
                 {{ row.statusDetail }}
-                @if (row.covering === 'push') { <span class="sb-push">· push</span> }
+                @if (row.covering === 'push') {
+                  <span class="sb-push">· push</span>
+                }
               </span>
             </div>
           }
@@ -139,13 +157,26 @@ import { PoolService } from '../services/pool.service';
       font-weight: 700;
     }
     .sb-team.covering .sb-line {
-      color: #6ee7a0;
+      color: #7cb8ff;
     }
+    /*
+     * The viewer's pick, colored like the picks page: blue while the game is still in play, then
+     * green, red or gold once it's final and the pick has settled.
+     */
     .sb-team.picked .sb-ab::after {
       content: ' ●';
-      color: var(--gold);
+      color: #4f9bff;
       font-size: 0.7em;
       vertical-align: middle;
+    }
+    .sb-team.picked.res-win .sb-ab::after {
+      color: #6ee7a0;
+    }
+    .sb-team.picked.res-loss .sb-ab::after {
+      color: #ff6b81;
+    }
+    .sb-team.picked.res-push .sb-ab::after {
+      color: var(--gold);
     }
     .sb-logo {
       width: 18px;
@@ -198,13 +229,35 @@ export class ScoreboardBannerComponent implements OnDestroy {
   private unsub: Unsubscribe | null = null;
   private watching = '';
 
+  /**
+   * The active week's Sunday as ESPN's `YYYYMMDD`, or undefined for ESPN's current board. Uses the
+   * stored `sundayDate`, else the Eastern date of the first kickoff for a week the line sync
+   * hasn't stamped yet.
+   */
+  private readonly espnDate = computed(() => {
+    const week = this.pool.week();
+    if (!week) return undefined;
+    const sunday =
+      week.sundayDate || (week.games.length ? easternDate(firstKickoff(week.games)) : '');
+    return sunday ? sunday.replace(/-/g, '') : undefined;
+  });
+
   /** ESPN games joined to the pool's slate, capped so the strip stays tidy. */
   readonly rows = computed(() =>
     mergeLiveScores(this.raw(), this.pool.week()?.games ?? [], this.myPicks()).slice(0, 20),
   );
 
   constructor() {
-    void this.tick();
+    // Poll the active week's Sunday; start over at once when the pool moves to a different week.
+    effect(() => {
+      const date = this.espnDate();
+      untracked(() => {
+        if (this.timer) clearTimeout(this.timer);
+        this.timer = null;
+        this.raw.set([]);
+        void this.tick(date);
+      });
+    });
 
     // Follow the signed-in user's own entry so their picks can be marked on the strip.
     effect(() => {
@@ -230,18 +283,21 @@ export class ScoreboardBannerComponent implements OnDestroy {
   }
 
   /** Refresh, then schedule the next poll based on whether anything is live. */
-  private async tick(): Promise<void> {
-    await this.refresh();
+  private async tick(date: string | undefined): Promise<void> {
+    await this.refresh(date);
+    // The week changed while this fetch was in flight; the newer tick owns the schedule now.
+    if (date !== this.espnDate()) return;
     const live = this.rows().some((r) => r.state === 'in');
     const delay = live
       ? ScoreboardBannerComponent.LIVE_INTERVAL
       : ScoreboardBannerComponent.IDLE_INTERVAL;
-    this.timer = setTimeout(() => void this.tick(), delay);
+    this.timer = setTimeout(() => void this.tick(date), delay);
   }
 
-  private async refresh(): Promise<void> {
+  private async refresh(date: string | undefined): Promise<void> {
     try {
-      this.raw.set(await this.espn.fetchScoreboard());
+      const games = await this.espn.fetchScoreboard(date);
+      if (date === this.espnDate()) this.raw.set(games);
     } catch {
       // Leave the previous scores in place on a transient failure.
     }
@@ -253,7 +309,19 @@ export class ScoreboardBannerComponent implements OnDestroy {
     return side === 'home' ? row.home : row.away;
   }
 
+  /** How the viewer's pick settled, once the game is final; null while it's still in play. */
+  protected pickResult(row: LiveRow): 'win' | 'loss' | 'push' | null {
+    if (!row.myPick || !row.completed || !row.covering) return null;
+    if (row.covering === 'push') return 'push';
+    return row.covering === row.myPick ? 'win' : 'loss';
+  }
+
   protected line(row: LiveRow, side: string): string {
     return spreadLabel(row.homeSpread ?? null, side === 'home' ? 'home' : 'away');
   }
+}
+
+/** Epoch ms -> `YYYY-MM-DD` in US Eastern, the calendar the NFL slate is dated in. */
+function easternDate(ms: number): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(ms);
 }

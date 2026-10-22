@@ -1,7 +1,7 @@
 import { Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Unsubscribe } from 'firebase/firestore';
-import { Entry, Game, PickStatus, Side, emptyEntry, spreadLabel } from '../../models';
+import { Entry, Game, PickStatus, Side, Week, emptyEntry, spreadLabel } from '../../models';
 import { scoreEntry, settleGame } from '../../scoring/scoring';
 import { AuthService } from '../../services/auth.service';
 import { EntryService } from '../../services/entry.service';
@@ -12,6 +12,9 @@ import { PoolService } from '../../services/pool.service';
  *
  * Routed twice — `/picks` for your own entry (editable until lock) and `/picks/:uid` for reading
  * someone else's after the week locks. `uid` comes in via `withComponentInputBinding`.
+ *
+ * Always opens on the pool's active week. A dropdown switches to any past (locked or final) week
+ * to review how that card settled; past weeks are read-only.
  */
 @Component({
   selector: 'app-picks',
@@ -37,6 +40,38 @@ export class PicksComponent implements OnDestroy {
   protected readonly error = signal('');
   protected readonly savedAt = signal<number | null>(null);
 
+  /** The week picked in the dropdown; null means the active week, which is where the page opens. */
+  protected readonly selectedWeekId = signal<string | null>(null);
+  /** The past week being viewed, read once — only the active week still receives score updates. */
+  private readonly pastWeek = signal<Week | null>(null);
+  /** Past weeks available in the dropdown, newest first. */
+  private readonly settledWeeks = signal<Week[]>([]);
+
+  /** True when showing the active week rather than a past one. */
+  protected readonly isCurrentWeek = computed(() => {
+    const id = this.selectedWeekId();
+    return !id || id === this.pool.week()?.id;
+  });
+
+  /** The week on screen: the live active week, or the past week chosen in the dropdown. */
+  protected readonly week = computed<Week | null>(() =>
+    this.isCurrentWeek() ? this.pool.week() : this.pastWeek(),
+  );
+
+  /** Dropdown entries: the active week plus every settled week, newest first. */
+  protected readonly weekOptions = computed(() => {
+    const byId = new Map<string, Week>();
+    for (const w of this.settledWeeks()) byId.set(w.id, w);
+    const active = this.pool.week();
+    if (active) byId.set(active.id, active);
+    return [...byId.values()]
+      .sort((a, b) => b.season - a.season || b.week - a.week)
+      .map((w) => ({
+        id: w.id,
+        label: `Week ${w.week}` + (w.id === active?.id ? ' (current)' : ''),
+      }));
+  });
+
   private unsub: Unsubscribe | null = null;
   private watching = '';
   /** False until the first snapshot for the current week/user has populated the draft. */
@@ -46,9 +81,11 @@ export class PicksComponent implements OnDestroy {
   protected readonly targetUid = computed(() => this.uid() ?? this.auth.user()?.uid ?? '');
   protected readonly isOwn = computed(() => this.targetUid() === this.auth.user()?.uid);
   /** Editable only when it's your own card and the week is still open. */
-  protected readonly canEdit = computed(() => this.isOwn() && !this.pool.isLocked());
+  protected readonly canEdit = computed(
+    () => this.isOwn() && this.isCurrentWeek() && !this.pool.isLocked(),
+  );
 
-  protected readonly games = computed(() => this.pool.week()?.games ?? []);
+  protected readonly games = computed(() => this.week()?.games ?? []);
   protected readonly pickedCount = computed(
     () => this.games().filter((g) => this.draft()[g.id]).length,
   );
@@ -67,15 +104,21 @@ export class PicksComponent implements OnDestroy {
 
   /** Running record, meaningful only once games start going final. */
   protected readonly score = computed(() => {
-    const week = this.pool.week();
+    const week = this.week();
     const entry = this.saved();
     return week && entry ? scoreEntry(week, entry) : null;
   });
 
   constructor() {
-    // Re-subscribe whenever the active week or the viewed user changes.
+    // Past weeks for the dropdown. A failure just leaves the dropdown showing the current week.
+    this.pool
+      .listSettledWeeks()
+      .then((weeks) => this.settledWeeks.set(weeks))
+      .catch(() => {});
+
+    // Re-subscribe whenever the viewed week or the viewed user changes.
     effect(() => {
-      const weekId = this.pool.week()?.id;
+      const weekId = this.week()?.id;
       const uid = this.targetUid();
       if (!weekId || !uid) return;
       const key = `${weekId}/${uid}`;
@@ -110,6 +153,22 @@ export class PicksComponent implements OnDestroy {
       else next[game.id] = side;
       return next;
     });
+  }
+
+  /** Switches the card to another week; the active week goes back to following the live listener. */
+  protected async selectWeek(id: string): Promise<void> {
+    if (this.dirty()) return;
+    const current = !id || id === this.pool.week()?.id;
+    this.selectedWeekId.set(current ? null : id);
+    if (current) return;
+    this.pastWeek.set(this.settledWeeks().find((w) => w.id === id) ?? null);
+    try {
+      // Re-read so a score an admin corrected after the fact shows up.
+      const fresh = await this.pool.getWeek(id);
+      if (this.selectedWeekId() === id && fresh) this.pastWeek.set(fresh);
+    } catch {
+      // Keep the copy from the dropdown list.
+    }
   }
 
   protected async save(): Promise<void> {
@@ -165,13 +224,13 @@ export class PicksComponent implements OnDestroy {
    * game they picked correctly should stay neutral rather than being painted red.
    */
   protected result(game: Game, side: Side): PickStatus | null {
-    if (this.saved()?.picks[game.id] !== side) return null;
+    if (this.saved()?.picks?.[game.id] !== side) return null;
     return this.status(game);
   }
 
   /** Status of the *saved* pick on this game — what actually counts. */
   protected status(game: Game): PickStatus {
-    const side = this.saved()?.picks[game.id];
+    const side = this.saved()?.picks?.[game.id];
     if (!side) return 'none';
     const cover = this.cover(game);
     if (cover === null) return 'pending';

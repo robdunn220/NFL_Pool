@@ -37,10 +37,13 @@ export function settlePick(game: Game, side: Side | undefined): PickStatus {
 
 /** Scores one entry against a week's slate. */
 export function scoreEntry(week: Week, entry: Entry): WeekScore {
+  // An entry document can exist without picks (e.g. its fields were cleared by hand in the
+  // console); score it as a blank card rather than letting one bad row sink the whole board.
+  const chosen = entry.picks ?? {};
   const picks: PickResult[] = week.games.map((game) => ({
     gameId: game.id,
-    side: entry.picks[game.id] ?? null,
-    status: settlePick(game, entry.picks[game.id]),
+    side: chosen[game.id] ?? null,
+    status: settlePick(game, chosen[game.id]),
   }));
 
   const count = (s: PickStatus) => picks.filter((p) => p.status === s).length;
@@ -73,15 +76,27 @@ export function scoreWeek(week: Week, entries: Entry[]): WeekScore[] {
 export function rankWeek(scores: WeekScore[]): WeekScore[] {
   return [...scores].sort(
     (a, b) =>
-      b.wins - a.wins || a.losses - b.losses || a.displayName.localeCompare(b.displayName),
+      b.wins - a.wins ||
+      a.losses - b.losses ||
+      (a.displayName ?? '').localeCompare(b.displayName ?? ''),
   );
 }
 
-/** Rolls scored weeks up into season standings, sorted by wins then win percentage. */
+/**
+ * Rolls scored weeks up into season standings, sorted by wins then win percentage.
+ *
+ * Also credits each week's pot: whoever picked the most games correctly wins it, and a tie at the
+ * top means every tied player won — the pot is split, not decided by a tiebreaker. A week only
+ * pays once nothing anyone picked is still pending, so a Sunday in progress awards nothing yet.
+ * A week where the best score is zero pays nobody.
+ */
 export function seasonStandings(weeks: WeekScore[][]): SeasonRow[] {
   const rows = new Map<string, SeasonRow>();
 
   for (const week of weeks) {
+    const settled = week.every((s) => s.pending === 0);
+    const top = Math.max(0, ...week.map((s) => s.wins));
+
     for (const s of week) {
       const row = rows.get(s.uid) ?? {
         uid: s.uid,
@@ -91,6 +106,7 @@ export function seasonStandings(weeks: WeekScore[][]): SeasonRow[] {
         pushes: 0,
         weeksPlayed: 0,
         bestWeek: 0,
+        weeksWon: 0,
       };
       row.displayName = s.displayName;
       row.wins += s.wins;
@@ -98,12 +114,16 @@ export function seasonStandings(weeks: WeekScore[][]): SeasonRow[] {
       row.pushes += s.pushes;
       row.weeksPlayed += 1;
       row.bestWeek = Math.max(row.bestWeek, s.wins);
+      if (settled && top > 0 && s.wins === top) row.weeksWon += 1;
       rows.set(s.uid, row);
     }
   }
 
   const pct = (r: SeasonRow) => (r.wins + r.losses === 0 ? 0 : r.wins / (r.wins + r.losses));
   return [...rows.values()].sort(
-    (a, b) => b.wins - a.wins || pct(b) - pct(a) || a.displayName.localeCompare(b.displayName),
+    (a, b) =>
+      b.wins - a.wins ||
+      pct(b) - pct(a) ||
+      (a.displayName ?? '').localeCompare(b.displayName ?? ''),
   );
 }

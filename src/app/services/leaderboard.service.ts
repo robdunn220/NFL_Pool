@@ -31,6 +31,8 @@ export class LeaderboardService {
 
   readonly seasonRows = signal<SeasonRow[]>([]);
   readonly seasonLoading = signal(false);
+  /** Set when the season couldn't be read, so the page doesn't pass a failure off as "no weeks". */
+  readonly seasonError = signal<string | null>(null);
 
   /**
    * Begin listening to the active week's entries.
@@ -50,10 +52,9 @@ export class LeaderboardService {
   /** Recomputes season standings from every locked week. */
   async loadSeason(): Promise<void> {
     this.seasonLoading.set(true);
+    this.seasonError.set(null);
     try {
-      const weeks = (await this.pool.listWeeks()).filter(
-        (w) => w.status === 'locked' || w.status === 'final',
-      );
+      const weeks = await this.pool.listSettledWeeks();
       const scored = await Promise.all(
         weeks.map(async (w) => {
           const entries = await this.entries.listEntries(w.id);
@@ -61,6 +62,9 @@ export class LeaderboardService {
         }),
       );
       this.seasonRows.set(seasonStandings(scored));
+    } catch (e) {
+      console.error('Season standings failed to load', e);
+      this.seasonError.set("Couldn't load the season standings. Try refreshing the page.");
     } finally {
       this.seasonLoading.set(false);
     }

@@ -35,4 +35,6 @@ export interface SeasonRow {
   weeksPlayed: number;
   /** Best single-week win total. */
   bestWeek: number;
+  /** Weeks this player took the pot: most correct picks that week, ties splitting it. */
+  weeksWon: number;
 }

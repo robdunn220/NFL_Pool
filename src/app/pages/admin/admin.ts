@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Game, Week, firstKickoff, weekId } from '../../models';
 import { AuthService } from '../../services/auth.service';
@@ -43,6 +43,13 @@ export class AdminComponent {
 
   /** Which week id the editor is currently staged from, so a manual selection isn't clobbered. */
   private stagedWeekId = '';
+  /** True when the editor holds edits that haven't been saved. */
+  protected readonly dirty = computed(() => {
+    const draft = this.draft();
+    return !!draft && JSON.stringify(draft) !== this.stagedSnapshot();
+  });
+  /** The week as last staged, serialized — the baseline for telling unsaved edits apart. */
+  private readonly stagedSnapshot = signal('');
 
   constructor() {
     // Load the week list once config/app has resolved, NOT in the constructor.
@@ -55,18 +62,25 @@ export class AdminComponent {
       if (this.pool.config()) void this.loadWeeks();
     });
 
-    // Stage the active week for editing whenever it changes. Keyed on the id so a week the admin
-    // has just created and staged by hand doesn't get overwritten.
+    // Stage the active week for editing whenever it changes — a different week, or new data on
+    // the same one (a line sync, a score update). Same-week updates are only adopted while the
+    // editor has no unsaved edits, so a sync landing mid-edit can't wipe out the admin's work.
     effect(() => {
       const active = this.pool.week();
       if (!active) {
         this.stagedWeekId = '';
         return;
       }
-      if (active.id === this.stagedWeekId) return;
+      if (active.id === this.stagedWeekId && untracked(() => this.dirty())) return;
       this.stagedWeekId = active.id;
-      this.draft.set(structuredClone(active));
+      this.stage(structuredClone(active));
     });
+  }
+
+  /** Loads a week into the editor as its clean, unedited baseline. */
+  private stage(week: Week): void {
+    this.draft.set(week);
+    this.stagedSnapshot.set(JSON.stringify(week));
   }
 
   protected async loadWeeks(): Promise<void> {
@@ -84,7 +98,8 @@ export class AdminComponent {
     this.error.set('');
     try {
       await fn();
-      this.message.set(`${label} done.`);
+      // Keep a more specific message the action set itself, like a sync's summary.
+      if (!this.message()) this.message.set(`${label} done.`);
     } catch (e) {
       this.error.set(`${label} failed: ${(e as Error).message}`);
     } finally {
@@ -108,20 +123,38 @@ export class AdminComponent {
 
   // --- Weeks ---
 
+  /**
+   * Creates a week, makes it the active week, and pulls its slate and lines in one go.
+   *
+   * It starts `open`, so players see it straight away. Picks stay closed until the sync sets
+   * `lockAt` (the rules treat `lockAt: 0` as locked). The sync runs last: the function only ever
+   * syncs the active week. If it fails, the week still exists and is active, and "Sync lines now"
+   * can be retried.
+   */
   protected createWeek(): Promise<void> {
     const id = weekId(this.newSeason, this.newWeek);
     return this.run(`Create ${id}`, async () => {
+      // Saving over an existing week would wipe its games and reset its status.
+      if (this.weeks().some((w) => w.id === id)) {
+        throw new Error(`${id} already exists. Pick it from "Active week" instead.`);
+      }
       const week: Week = {
         id,
         season: this.newSeason,
         week: this.newWeek,
-        status: 'draft',
+        status: 'open',
         lockAt: 0,
         games: [],
       };
       await this.pool.saveWeek(week);
-      await this.loadWeeks();
-      this.draft.set(week);
+      await this.pool.setActiveWeek(id);
+      try {
+        await this.callFunction('syncLinesNow');
+      } catch (e) {
+        throw new Error(
+          `week created and set active, but the line sync failed (${(e as Error).message}). Try "Sync lines now".`,
+        );
+      }
     });
   }
 
@@ -130,6 +163,8 @@ export class AdminComponent {
     if (!week) return Promise.resolve();
     return this.run('Save week', async () => {
       await this.pool.saveWeek(week);
+      // What was just written is the new clean baseline, so the listener's echo is adopted.
+      this.stagedSnapshot.set(JSON.stringify(week));
       await this.loadWeeks();
     });
   }

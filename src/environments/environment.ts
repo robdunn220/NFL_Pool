@@ -9,7 +9,7 @@
  */
 export const environment = {
   production: false,
-  adminEmails: ['robertdunn220@gmail.com'],
+  adminEmails: ['robertdunn220@gmail.com', 'donhamm@bellsouth.net'],
   /** Base URL for the callable HTTPS functions, used by the Admin page's manual sync buttons. */
   functionsBaseUrl: 'https://us-central1-nflpool-9c7b2.cloudfunctions.net',
   firebase: {

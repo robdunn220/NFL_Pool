@@ -90,6 +90,8 @@
   } @else {
     @if (board.seasonLoading()) {
       <div class="empty">Adding up the season…</div>
+    } @else if (board.seasonError()) {
+      <div class="alert alert-error">{{ board.seasonError() }}</div>
     } @else if (!board.seasonRows().length) {
       <div class="empty">No completed weeks yet.</div>
     } @else {
@@ -105,6 +107,7 @@
               <th class="num">Pct</th>
               <th class="num">Weeks</th>
               <th class="num">Best</th>
+              <th class="num" title="Most correct picks that week; ties split the pot">Weeks Won</th>
             </tr>
           </thead>
           <tbody>
@@ -118,6 +121,9 @@
                 <td class="num mono">{{ winPct(row.wins, row.losses) }}</td>
                 <td class="num muted">{{ row.weeksPlayed }}</td>
                 <td class="num muted">{{ row.bestWeek }}</td>
+                <td class="num">
+                  @if (row.weeksWon) { <strong>🏆 {{ row.weeksWon }}</strong> } @else { — }
+                </td>
               </tr>
             }
           </tbody>
