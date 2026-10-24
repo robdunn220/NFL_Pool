@@ -70,9 +70,27 @@ table.grid .player {
   max-width: 10rem;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/*
+ * Pts and Rec stay put beside the name, so the totals are in view wherever you are on the slate.
+ * Their offsets come from the measured widths of the columns before them (set in the component),
+ * because the player column sizes to its longest name.
+ */
+table.grid .pts {
+  position: sticky;
+  left: var(--pts-left, 0);
+  z-index: 1;
+}
+table.grid .rec {
+  position: sticky;
+  left: var(--rec-left, 0);
+  z-index: 1;
   box-shadow: 1px 0 0 var(--border);
 }
-table.grid thead .player {
+table.grid thead .player,
+table.grid thead .pts,
+table.grid thead .rec {
   z-index: 3;
 }
 

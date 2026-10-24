@@ -1,4 +1,14 @@
-import { Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  OnDestroy,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Unsubscribe } from 'firebase/firestore';
 import { teamAbbr } from '../../core/nfl-teams';
@@ -37,6 +47,12 @@ export class PicksGridComponent implements OnDestroy {
 
   private unsub: Unsubscribe | null = null;
   private watching = '';
+
+  // The frozen columns' offsets depend on the rendered widths of the columns before them.
+  private readonly gridWrap = viewChild<ElementRef<HTMLElement>>('gridWrap');
+  private readonly playerHead = viewChild<ElementRef<HTMLElement>>('playerHead');
+  private readonly ptsHead = viewChild<ElementRef<HTMLElement>>('ptsHead');
+  private resizer: ResizeObserver | null = null;
 
   /**
    * The week being shown: whatever is selected, defaulting to the pool's active week.
@@ -79,10 +95,32 @@ export class PicksGridComponent implements OnDestroy {
         this.loading.set(false);
       });
     });
+
+    // Pin Pts and Rec just right of the player column. Re-measured whenever those headers resize —
+    // a longer name joining, or "Pts" turning into "Final" — and re-attached when the table is
+    // re-rendered (switching weeks swaps it out for a loading message and back).
+    effect(() => {
+      const wrap = this.gridWrap()?.nativeElement;
+      const player = this.playerHead()?.nativeElement;
+      const pts = this.ptsHead()?.nativeElement;
+      this.resizer?.disconnect();
+      this.resizer = null;
+      if (!wrap || !player || !pts) return;
+
+      const place = () => {
+        wrap.style.setProperty('--pts-left', `${player.offsetWidth}px`);
+        wrap.style.setProperty('--rec-left', `${player.offsetWidth + pts.offsetWidth}px`);
+      };
+      place();
+      this.resizer = new ResizeObserver(place);
+      this.resizer.observe(player);
+      this.resizer.observe(pts);
+    });
   }
 
   ngOnDestroy(): void {
     this.unsub?.();
+    this.resizer?.disconnect();
   }
 
   // --- Template helpers ---

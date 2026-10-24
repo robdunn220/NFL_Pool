@@ -29,13 +29,13 @@
 } @else if (!scores().length) {
   <div class="empty">Nobody has entered this week.</div>
 } @else {
-  <div class="grid-wrap">
+  <div class="grid-wrap" #gridWrap>
     <table class="grid">
       <thead>
         <tr>
-          <th class="player">Player</th>
-          <th class="num pts">{{ isFinal() ? 'Final' : 'Pts' }}</th>
-          <th class="num">Rec</th>
+          <th class="player" #playerHead>Player</th>
+          <th class="num pts" #ptsHead>{{ isFinal() ? 'Final' : 'Pts' }}</th>
+          <th class="num rec">Rec</th>
           @for (game of games(); track game.id) {
             <th class="game">
               <span class="matchup">{{ abbr(game, 'away') }} &#64; {{ abbr(game, 'home') }}</span>
